@@ -27,6 +27,12 @@ Records should distinguish at least:
 
 A state transition must record who or what performed it, when, under which method or policy, and what scope it applies to. A boolean flag alone is insufficient for consequential evidence.
 
+## Organizational unit access
+
+OrganizationalUnit is a proposed scope narrower than Organization. Organization Membership and Unit Membership are distinct grants. Organization membership alone must not be interpreted as access to every unit-scoped initiative or record. Unit roles cannot elevate organization privileges or imply contractual, financial, disclosure or IP-transfer authority.
+
+See the [Organizational Unit Authorization Contract](organizational_unit_authorization_contract_v0.1.md). This is a proposed security contract; RLS and application enforcement remain unimplemented and require authenticated runtime validation.
+
 ## Human approval gates
 
 Explicit authorization is required before:
@@ -79,4 +85,4 @@ Client records must be scoped to the relevant engagement and authorized particip
 
 ## Policy status
 
-This document establishes intended governance requirements. Operational enforcement, legal review, security controls, and compliance validation remain implementation tasks.
+This document establishes intended governance requirements. Organizational unit authorization is specified but not implemented. Operational enforcement, legal review, security controls, and compliance validation remain implementation tasks.

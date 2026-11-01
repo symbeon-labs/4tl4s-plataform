@@ -25,7 +25,7 @@ jobs:
   postgres-validation:
     name: PostgreSQL migration and policy validation
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 25
 
     services:
       postgres:
@@ -53,21 +53,35 @@ jobs:
       - name: Checkout pull request source
         uses: actions/checkout@v4
 
-      - name: Install PostgreSQL client and pgTAP
+      - name: Install PostgreSQL client and pgTAP in PostgreSQL service
+        id: postgres-tools
+        shell: bash
         run: |
+          set -euo pipefail
           sudo apt-get update
-          sudo apt-get install -y postgresql-client-17
-          docker ps --format '{{.ID}} {{.Image}}' | awk '$2 ~ /^postgres:17/ {print $1; exit}' > /tmp/postgres-container
-          CONTAINER="$(cat /tmp/postgres-container)"
+          sudo apt-get install -y postgresql-client
+          CONTAINER="$(docker ps --format '{{.ID}} {{.Image}}' | awk '$2 ~ /^postgres:17/ {print $1; exit}')"
           test -n "$CONTAINER"
-          docker exec "$CONTAINER" bash -lc '
-            apt-get update &&
+          echo "container=$CONTAINER" >> "$GITHUB_OUTPUT"
+
+          docker exec "$CONTAINER" bash -euc '
+            apt-get update
+            apt-get install -y ca-certificates curl
+            install -d /usr/share/postgresql-common/pgdg
+            curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc               -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc
+            echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt bookworm-pgdg main"               > /etc/apt/sources.list.d/pgdg.list
+            apt-get update
             apt-get install -y postgresql-17-pgtap
+            command -v pg_prove
+            psql --version
           '
 
       - name: Bootstrap minimal Supabase Auth compatibility layer
+        env:
+          CONTAINER: ${{ steps.postgres-tools.outputs.container }}
         run: |
-          psql -v ON_ERROR_STOP=1 <<'SQL'
+          set -euo pipefail
+          docker exec -i "$CONTAINER" psql -U postgres -d fourtl4s_test -v ON_ERROR_STOP=1 <<'SQL'
           CREATE ROLE anon NOLOGIN;
           CREATE ROLE authenticated NOLOGIN;
           CREATE ROLE service_role NOLOGIN BYPASSRLS;
@@ -93,6 +107,8 @@ jobs:
           SQL
 
       - name: Apply repository migrations in timestamp order
+        env:
+          CONTAINER: ${{ steps.postgres-tools.outputs.container }}
         run: |
           set -euo pipefail
           shopt -s nullglob
@@ -103,23 +119,31 @@ jobs:
           fi
           for migration in "${migrations[@]}"; do
             echo "::group::Applying $migration"
-            psql -v ON_ERROR_STOP=1 -f "$migration"
+            docker exec -i "$CONTAINER" psql -U postgres -d fourtl4s_test -v ON_ERROR_STOP=1 < "$migration"
             echo "::endgroup::"
           done
 
       - name: Run P0 pgTAP contract tests
+        env:
+          CONTAINER: ${{ steps.postgres-tools.outputs.container }}
         run: |
-          pg_prove --dbname "postgresql://postgres:postgres@localhost:5432/fourtl4s_test" \
-            supabase/tests/database/p0_integrity_contracts.test.sql
+          set -euo pipefail
+          docker cp supabase/tests/database/p0_integrity_contracts.test.sql "$CONTAINER:/tmp/p0_integrity_contracts.test.sql"
+          docker exec "$CONTAINER" pg_prove             --dbname "postgresql://postgres:postgres@localhost:5432/fourtl4s_test"             /tmp/p0_integrity_contracts.test.sql
 
       - name: Parse and apply Organizational Unit proposal on disposable database
+        env:
+          CONTAINER: ${{ steps.postgres-tools.outputs.container }}
         run: |
-          psql -v ON_ERROR_STOP=1 \
-            -f supabase/proposals/organizational_unit_scoped_access_v0.1.sql
+          set -euo pipefail
+          docker cp supabase/proposals/organizational_unit_scoped_access_v0.1.sql "$CONTAINER:/tmp/organizational_unit_scoped_access_v0.1.sql"
+          docker exec "$CONTAINER" psql -U postgres -d fourtl4s_test -v ON_ERROR_STOP=1             -f /tmp/organizational_unit_scoped_access_v0.1.sql
 
       - name: Verify Organizational Unit proposal objects and fail-closed controls
+        env:
+          CONTAINER: ${{ steps.postgres-tools.outputs.container }}
         run: |
-          psql -v ON_ERROR_STOP=1 <<'SQL'
+          docker exec -i "$CONTAINER" psql -U postgres -d fourtl4s_test -v ON_ERROR_STOP=1 <<'SQL'
           DO $$
           BEGIN
             IF to_regclass('public.organizational_units') IS NULL THEN

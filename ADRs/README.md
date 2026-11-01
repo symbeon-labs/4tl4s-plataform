@@ -39,3 +39,6 @@ Create an ADR when a decision materially affects:
 - [ADR-0002 — Preserve project autonomy and IP boundaries](ADR-0002-project-autonomy-and-ip-boundaries.md)
 - [ADR-0003 — Govern research-to-development transfer](ADR-0003-research-to-development-transfer.md)
 - [ADR-0004 — Represent organizational units separately and consume SOA context by reference](ADR-0004-organizational-units-and-soa-context.md)
+- [ADR-0005 — Introduce first-class organizational units with explicit scoped access](ADR-0005-organizational-unit-scoped-access.md)
+
+ADR-0005 is **Proposed** and depends on review of the domain and authorization contracts. No schema or runtime implementation is implied.

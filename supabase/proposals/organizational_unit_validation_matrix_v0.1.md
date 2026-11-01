@@ -48,7 +48,13 @@ Add work packages, artifacts, evidence, decisions and IP assets under both organ
 | OU-014 | A-U1 creates child record linked to A-U2 initiative | Deny |
 | OU-015 | A-U1 assigns an ORG-B unit to an ORG-A initiative | FK rejection |
 | OU-016 | A-ADMIN creates or archives a unit | Allow, audited |
-| OU-017 | A-U1 unit_admin grants user a unit_admin role | Deny under proposal |
+| OU-017 | A-U1 unit_admin grants user a unit_admin role | Deny |
+| OU-021 | contributor creates or changes unit membership | Deny |
+| OU-022 | unit_admin creates or changes ordinary membership in same unit | Allow |
+| OU-023 | unit_admin changes membership in another unit | Deny |
+| OU-024 | unit_admin attempts to promote a member to unit_admin | Deny |
+| OU-025 | unit_admin attempts to modify another unit_admin grant | Deny |
+| OU-026 | unit_admin membership management after org suspension or unit archive | Deny |
 | OU-018 | A-U1 unit_admin changes ordinary unit membership | Allow within same unit only |
 | OU-019 | Unit role attempts organization role escalation | Deny |
 | OU-020 | Unassigned child points to unit-scoped parent | Child must remain restricted to parent scope |
@@ -81,7 +87,7 @@ This is an explicit pre-activation blocker, not an accepted residual risk.
 - Verify every SELECT/INSERT/UPDATE/DELETE operation for initiatives and descendants.
 - Verify service-role and background-job behavior separately.
 - Verify no secrets or service credentials are exposed.
-- Verify audit events for unit creation, archive, membership grant/revocation and initiative reassignment.
+- Verify trusted audit-event ingestion for unit creation, archive, membership grant/revocation and initiative reassignment. Direct authenticated INSERT into `audit_events` must be denied; trusted ingestion must derive actor and timestamp server-side.
 - Run catalog checks and authenticated integration tests; catalog checks alone are insufficient.
 
 ## 6. Exit criteria

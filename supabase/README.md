@@ -11,7 +11,7 @@ The initial schema and P0 tenant-integrity hardening migrations are applied to t
 | `202611010001` | `initial_platform_schema` |
 | `20261101123353` | `p0_tenant_integrity_and_membership_authority` |
 | `20261101123510` | `consolidate_membership_management_policies` |
-| `20261101123533` | `remove_redundant_single_column_parent_foreign_keys` |
+| `20261101123533` | `remove_redundant_single_column_parent_foreign_keys` |\n| `20261101140000` | `harden_audit_event_ingestion` |
 
 The initial schema migration creates the 12 domain tables. The P0 migrations add tenant-scoped composite foreign keys, relationship endpoint validation, membership authority boundaries, last-owner protection, immutable organization identity fields, and consolidated membership policies.
 
@@ -38,7 +38,7 @@ The initial schema migration creates the 12 domain tables. The P0 migrations add
 - Membership organization and user identity fields are immutable.
 - Organization `id` and `created_by` are immutable.
 - Integration connection metadata is restricted to organization owners and admins.
-- Audit events have read and insert policies only; authenticated users are not granted update/delete privileges.
+- Authenticated clients have no direct INSERT, UPDATE or DELETE path into `audit_events`; trusted server/database ingestion is required. The ingestion pipeline is not yet implemented.
 - New Auth users receive a profile row through an Auth trigger.
 
 ## Automated database tests
@@ -88,7 +88,7 @@ No customer records, RS Advogados information, or third-party project payloads w
 
 The design package is available under `proposals/`:
 
-- `organizational_unit_scoped_access_v0.1.sql` — proposed schema, helper functions, hierarchy and scope-consistency guards, and scope-aware RLS policies.
+- `organizational_unit_scoped_access_v0.1.sql` — proposed schema, helper functions, hierarchy and scope-consistency guards, scope-aware RLS policies, separate unit-administrator membership authority, and fail-closed relationship access.
 - `organizational_unit_validation_matrix_v0.1.md` — synthetic multi-tenant authorization and integrity test matrix.
 
 Selected policy proposal:
@@ -98,6 +98,6 @@ Selected policy proposal:
 - Read-only unit roles can read; only unit_admin, unit_manager and contributor roles can write ordinary unit-scoped work.
 - Suspended organization membership or inactive unit lifecycle blocks unit-content access.
 
-**Critical pre-activation blocker:** the generic `relationships` table remains tenant-member visible in this proposal. Its polymorphic endpoints can reveal unit-scoped entity identifiers. Endpoint-aware authorization or a safe endpoint restriction must be implemented and tested before unit-scoped production records are activated.
+**Relationship control:** the proposal now denies authenticated access to `relationships` until endpoint-aware authorization is implemented and runtime-tested. This is a deliberate fail-closed restriction; relationship graph functionality is unavailable under the proposal.
 
 This SQL is stored under `proposals/`, not `migrations/`. It has not been applied, parsed by a PostgreSQL server, or runtime-tested. Do not execute it in production. ADR-0005 and the domain/security contracts remain proposed pending review and approval.

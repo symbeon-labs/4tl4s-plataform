@@ -45,7 +45,7 @@ For a unit-scoped record, allow access only if:
 - the role permits the action;
 - no classification, case-isolation or explicit-deny rule blocks it.
 
-For an organization-level record with no unit scope, apply a separately declared organization-level policy. Null unit scope is not a bypass and cannot be used as fallback for inaccessible unit-scoped records.
+For an organization-level record with no unit scope, the selected compatibility policy permits active members of that organization to read and work with the record, subject to the existing organization-level role and workflow rules. Null unit scope is not public access and cannot be used as fallback for an inaccessible unit-scoped record. Organization owners/admins do not receive implicit content access to unit-scoped records.
 
 Descendants inherit the Initiative's narrowest scope. A child may be more restricted, never broader. A matching organization_id alone cannot expose an artifact or evidence record.
 
@@ -87,4 +87,4 @@ Record actor, organization, unit, target, action, prior/new scope, policy/contra
 
 ## 9. Status
 
-Proposed security baseline only. It does not assert that RLS policies, application checks, tests or unit tables have been implemented. Approval is required before schema migration and connector activation.
+Proposed security baseline only. The initial policy choice is: unassigned organization-level records remain available to active organization members; unit-scoped records require explicit active Unit Membership. Unit lifecycle must be active for unit content access. It does not assert that RLS policies, application checks, tests or unit tables have been implemented. Approval is required before schema migration and connector activation.

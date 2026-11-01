@@ -100,10 +100,10 @@ SELECT is(
 SELECT is(
   (SELECT count(*)::integer
    FROM (
-     SELECT roles, cmd
+     SELECT tablename, roles, cmd
      FROM pg_policies
      WHERE schemaname = 'public'
-     GROUP BY roles, cmd
+     GROUP BY tablename, roles, cmd
      HAVING count(*) > 1
    ) duplicate_permissive_policy_groups),
   0,

@@ -297,6 +297,33 @@ AS $function$
   );
 $function$;
 
+CREATE OR REPLACE FUNCTION private.is_active_unit_admin(
+  target_org uuid,
+  target_unit uuid
+)
+RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = ''
+AS $function$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.unit_memberships actor
+    JOIN public.memberships om
+      ON om.organization_id = actor.organization_id
+     AND om.user_id = actor.user_id
+    JOIN public.organizational_units u
+      ON u.organization_id = actor.organization_id
+     AND u.id = actor.organizational_unit_id
+    WHERE actor.organization_id = target_org
+      AND actor.organizational_unit_id = target_unit
+      AND actor.user_id = (SELECT auth.uid())
+      AND actor.role = 'unit_admin'
+      AND actor.status = 'active'
+      AND om.status = 'active'
+      AND u.lifecycle_state = 'active'
+  );
+$function$;
+
 CREATE OR REPLACE FUNCTION private.has_unit_write_role(
   target_org uuid,
   target_unit uuid
@@ -392,11 +419,11 @@ AS $function$
   END;
 $function$;
 
-REVOKE ALL ON FUNCTION private.has_active_unit_membership(uuid,uuid) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION private.is_active_unit_admin(uuid,uuid) FROM PUBLIC, anon;\nREVOKE ALL ON FUNCTION private.has_active_unit_membership(uuid,uuid) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION private.has_unit_write_role(uuid,uuid) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION private.can_access_initiative(uuid,uuid,boolean) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION private.can_access_artifact(uuid,uuid,boolean) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION private.has_active_unit_membership(uuid,uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION private.is_active_unit_admin(uuid,uuid) TO authenticated;\nGRANT EXECUTE ON FUNCTION private.has_active_unit_membership(uuid,uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION private.has_unit_write_role(uuid,uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION private.can_access_initiative(uuid,uuid,boolean) TO authenticated;
 GRANT EXECUTE ON FUNCTION private.can_access_artifact(uuid,uuid,boolean) TO authenticated;
@@ -443,23 +470,7 @@ WITH CHECK (
   private.has_org_role(organization_id, ARRAY['owner','admin'])
   OR (
     role <> 'unit_admin'
-    AND EXISTS (
-      SELECT 1
-      FROM public.unit_memberships actor
-      JOIN public.memberships om
-        ON om.organization_id = actor.organization_id
-       AND om.user_id = actor.user_id
-      JOIN public.organizational_units u
-        ON u.organization_id = actor.organization_id
-       AND u.id = actor.organizational_unit_id
-      WHERE actor.organization_id = unit_memberships.organization_id
-        AND actor.organizational_unit_id = unit_memberships.organizational_unit_id
-        AND actor.user_id = (SELECT auth.uid())
-        AND actor.role = 'unit_admin'
-        AND actor.status = 'active'
-        AND om.status = 'active'
-        AND u.lifecycle_state = 'active'
-    )
+    AND private.is_active_unit_admin(organization_id, organizational_unit_id)
   )
 );
 
@@ -469,46 +480,14 @@ USING (
   private.has_org_role(organization_id, ARRAY['owner','admin'])
   OR (
     role <> 'unit_admin'
-    AND EXISTS (
-      SELECT 1
-      FROM public.unit_memberships actor
-      JOIN public.memberships om
-        ON om.organization_id = actor.organization_id
-       AND om.user_id = actor.user_id
-      JOIN public.organizational_units u
-        ON u.organization_id = actor.organization_id
-       AND u.id = actor.organizational_unit_id
-      WHERE actor.organization_id = unit_memberships.organization_id
-        AND actor.organizational_unit_id = unit_memberships.organizational_unit_id
-        AND actor.user_id = (SELECT auth.uid())
-        AND actor.role = 'unit_admin'
-        AND actor.status = 'active'
-        AND om.status = 'active'
-        AND u.lifecycle_state = 'active'
-    )
+    AND private.is_active_unit_admin(organization_id, organizational_unit_id)
   )
 )
 WITH CHECK (
   private.has_org_role(organization_id, ARRAY['owner','admin'])
   OR (
     role <> 'unit_admin'
-    AND EXISTS (
-      SELECT 1
-      FROM public.unit_memberships actor
-      JOIN public.memberships om
-        ON om.organization_id = actor.organization_id
-       AND om.user_id = actor.user_id
-      JOIN public.organizational_units u
-        ON u.organization_id = actor.organization_id
-       AND u.id = actor.organizational_unit_id
-      WHERE actor.organization_id = unit_memberships.organization_id
-        AND actor.organizational_unit_id = unit_memberships.organizational_unit_id
-        AND actor.user_id = (SELECT auth.uid())
-        AND actor.role = 'unit_admin'
-        AND actor.status = 'active'
-        AND om.status = 'active'
-        AND u.lifecycle_state = 'active'
-    )
+    AND private.is_active_unit_admin(organization_id, organizational_unit_id)
   )
 );
 
@@ -518,23 +497,7 @@ USING (
   private.has_org_role(organization_id, ARRAY['owner','admin'])
   OR (
     role <> 'unit_admin'
-    AND EXISTS (
-      SELECT 1
-      FROM public.unit_memberships actor
-      JOIN public.memberships om
-        ON om.organization_id = actor.organization_id
-       AND om.user_id = actor.user_id
-      JOIN public.organizational_units u
-        ON u.organization_id = actor.organization_id
-       AND u.id = actor.organizational_unit_id
-      WHERE actor.organization_id = unit_memberships.organization_id
-        AND actor.organizational_unit_id = unit_memberships.organizational_unit_id
-        AND actor.user_id = (SELECT auth.uid())
-        AND actor.role = 'unit_admin'
-        AND actor.status = 'active'
-        AND om.status = 'active'
-        AND u.lifecycle_state = 'active'
-    )
+    AND private.is_active_unit_admin(organization_id, organizational_unit_id)
   )
 );
 

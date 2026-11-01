@@ -4,7 +4,7 @@
 
 BEGIN;
 
-SELECT plan(12);
+SELECT plan(14);
 
 SELECT is(
   (SELECT count(*)::integer
@@ -152,6 +152,22 @@ SELECT ok(
     'EXECUTE'
   ),
   'Authenticated role cannot directly execute organization trigger helper'
+);
+
+SELECT ok(
+  NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'audit_events'
+      AND cmd = 'INSERT'
+      AND 'authenticated' = ANY(roles::text[])
+  ),
+  'Authenticated clients have no direct audit-event INSERT policy'
+);
+
+SELECT ok(
+  NOT has_table_privilege('authenticated', 'public.audit_events', 'INSERT'),
+  'Authenticated role has no direct audit-event INSERT grant'
 );
 
 SELECT * FROM finish();

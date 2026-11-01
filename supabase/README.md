@@ -2,13 +2,18 @@
 
 ## Status
 
-Initial schema migration applied to the dedicated Supabase project `4TL4S-PLATFORM` in `sa-east-1`. This is an implementation baseline, not a production security certification.
+The initial schema and P0 tenant-integrity hardening migrations are applied to the dedicated Supabase project `4TL4S-PLATFORM` in `sa-east-1`. This is an implementation baseline, not a production security certification.
 
-## Migration
+## Migration history
 
-- `migrations/202611010001_initial_platform_schema.sql`
-- Migration name: `initial_platform_schema`
-- Applied successfully and confirmed in Supabase migration history.
+| Version | Migration |
+|---|---|
+| `202611010001` | `initial_platform_schema` |
+| `20261101123353` | `p0_tenant_integrity_and_membership_authority` |
+| `20261101123510` | `consolidate_membership_management_policies` |
+| `20261101123533` | `remove_redundant_single_column_parent_foreign_keys` |
+
+The initial schema migration creates the 12 domain tables. The P0 migrations add tenant-scoped composite foreign keys, relationship endpoint validation, membership authority boundaries, last-owner protection, immutable organization identity fields, and consolidated membership policies.
 
 ## Domain tables
 
@@ -21,21 +26,43 @@ Initial schema migration applied to the dedicated Supabase project `4TL4S-PLATFO
 | IP governance | `ip_assets`, `relationships` |
 | Integrations and audit | `integration_connections`, `audit_events` |
 
-## Access model
+## Access and integrity model
 
-- Every tenant-owned record carries an `organization_id`.
 - RLS is enabled on all 12 public tables.
 - Membership-backed helper functions enforce organization membership.
 - Organization creation assigns the creator the `owner` role.
+- Parent/child references across initiatives, work packages, artifacts, evidence, decisions, and IP assets are constrained to the same organization.
+- Relationship endpoints are checked for supported entity type, existence, and same-organization ownership.
+- Only owners can grant or manage privileged owner/admin memberships; admins are limited to non-privileged membership roles.
+- The final active owner cannot be demoted, suspended, or deleted.
+- Membership organization and user identity fields are immutable.
+- Organization `id` and `created_by` are immutable.
 - Integration connection metadata is restricted to organization owners and admins.
 - Audit events have read and insert policies only; authenticated users are not granted update/delete privileges.
 - New Auth users receive a profile row through an Auth trigger.
 
-## Important limitations before production
+## Automated database tests
 
-1. RLS policies have been installed, but cross-tenant adversarial tests have not yet been executed.
-2. Relationship endpoints use typed UUID references; entity existence and same-tenant consistency must be enforced in a subsequent constraint/trigger layer.
-3. Child records must be validated against the same organization as their parent; this is not yet fully enforced by composite foreign keys.
+Schema-contract tests are located at:
+
+- `tests/database/p0_integrity_contracts.test.sql`
+
+They use pgTAP to verify installed RLS coverage, tenant-scoped constraints, triggers, membership policy consolidation, and function privilege boundaries.
+
+Run locally with the Supabase CLI and a local database:
+
+```bash
+supabase start
+supabase test db
+```
+
+The test file is a catalog-level contract suite. It does **not** yet prove behavior under distinct authenticated JWT identities or concurrent owner-removal attempts. Those runtime tests must use isolated test identities and tenant fixtures in a disposable local/test database, never production.
+
+## Remaining limitations before production
+
+1. Cross-tenant read/write tests with distinct authenticated identities have not yet been executed.
+2. Concurrent last-owner mutation behavior still requires a multi-session integration test.
+3. The relationship entity-type allowlist is intentionally explicit; adding new entity types requires a migration and corresponding tests.
 4. Audit events are append-only for authenticated clients through current grants and policies, but privileged service credentials can bypass RLS. Service-side controls and operational logging remain necessary.
 5. No automatic audit trigger has yet been attached to every mutable business table.
 6. Invitation flows, role-change approval, account recovery, MFA policy, and session hardening remain to be implemented.
@@ -44,12 +71,12 @@ Initial schema migration applied to the dedicated Supabase project `4TL4S-PLATFO
 
 ## Data protection stance
 
-No customer records, RS Advogados information, or third-party project payloads were seeded. The database is intentionally empty. Client-specific data must only be introduced after organization isolation, access tests, and the relevant engagement scope have been reviewed.
+No customer records, RS Advogados information, or third-party project payloads were seeded. The database remains intentionally empty. Client-specific data must only be introduced after organization isolation, access tests, and the relevant engagement scope have been reviewed.
 
 ## Next implementation sequence
 
-1. Add integrity constraints for tenant-consistent parent/child references.
-2. Add automated tests for RLS isolation and role boundaries.
+1. Execute the pgTAP contract suite in a local Supabase environment.
+2. Add authenticated multi-tenant integration tests and concurrency tests.
 3. Implement Supabase Auth flows and server-side authorization.
 4. Implement the Next.js application shell and organization onboarding.
 5. Add audited APIs and scoped GitHub integration.

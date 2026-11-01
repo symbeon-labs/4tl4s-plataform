@@ -22,6 +22,14 @@ ADR-0004 establishes Organization and OrganizationalUnit as distinct conceptual 
 9. Unit records are archived, not hard-deleted, when historical references exist.
 10. Enforce invariants in database constraints, RLS and server-side use cases, with authenticated multi-identity tests.
 
+## Selected default access policy
+
+- Unassigned initiatives and their descendants remain available to active members of the organization, preserving the current tenant-wide baseline.
+- Unit-scoped initiatives and descendants require explicit active Unit Membership in that exact unit.
+- Organization owner/admin roles can manage unit structure and unit grants under policy, but do not automatically gain access to unit-scoped content.
+- Read-only unit roles may read; only unit_admin, unit_manager and contributor may write ordinary scoped work. Approval, contractual, financial, disclosure and IP-transfer powers remain separate human-authorized permissions.
+- Archived or suspended units confer no content access through their memberships.
+
 ## Consequences
 
 Requires coordinated changes to schema, RLS, indexes, relationship endpoint validation and application queries. Explicit organization-level access rules are required for unassigned initiatives. Existing broad policies must be revised before unit-scoped records are introduced. Existing data needs a compatibility and scope migration plan.
@@ -37,4 +45,4 @@ Requires coordinated changes to schema, RLS, indexes, relationship endpoint vali
 
 Before migration: approve domain and authorization contracts; define organization-level record access and explicit grants; produce migration/rollback plan; update RLS for every scoped read/write; add tenant-safe composite FKs and indexes; update relationship validation; test synthetic tenants, units and distinct authenticated identities; review privacy, client confidentiality and IP boundaries.
 
-This ADR remains proposed until these contracts and gates are explicitly approved. It does not claim implementation.
+This ADR remains proposed until these contracts and gates are explicitly approved. The access policy above is the selected design proposal; it has not been deployed or runtime-validated. It does not claim implementation.

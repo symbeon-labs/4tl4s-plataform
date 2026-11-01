@@ -214,6 +214,60 @@ BEFORE INSERT OR UPDATE OF organization_id, initiative_id, artifact_id
 ON public.evidence_records
 FOR EACH ROW EXECUTE FUNCTION private.guard_evidence_scope_consistency();
 
+-- Fail closed on parent-scope reassignment while descendants exist. A future
+-- controlled reassignment workflow must migrate the complete subtree atomically.
+CREATE OR REPLACE FUNCTION private.guard_work_package_scope_change()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $function$
+BEGIN
+  IF NEW.initiative_id IS DISTINCT FROM OLD.initiative_id
+     AND EXISTS (
+       SELECT 1 FROM public.artifacts a
+       WHERE a.organization_id = OLD.organization_id
+         AND a.work_package_id = OLD.id
+     ) THEN
+    RAISE EXCEPTION 'Cannot reassign a work package while artifacts reference it'
+      USING ERRCODE = '23514';
+  END IF;
+  RETURN NEW;
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION private.guard_artifact_scope_change()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $function$
+BEGIN
+  IF (NEW.initiative_id IS DISTINCT FROM OLD.initiative_id
+      OR NEW.work_package_id IS DISTINCT FROM OLD.work_package_id)
+     AND EXISTS (
+       SELECT 1 FROM public.evidence_records e
+       WHERE e.organization_id = OLD.organization_id
+         AND e.artifact_id = OLD.id
+     ) THEN
+    RAISE EXCEPTION 'Cannot reassign an artifact while evidence references it'
+      USING ERRCODE = '23514';
+  END IF;
+  RETURN NEW;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION private.guard_work_package_scope_change() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION private.guard_artifact_scope_change() FROM PUBLIC, anon, authenticated;
+
+CREATE TRIGGER work_packages_guard_scope_change
+BEFORE UPDATE OF initiative_id ON public.work_packages
+FOR EACH ROW EXECUTE FUNCTION private.guard_work_package_scope_change();
+
+CREATE TRIGGER artifacts_guard_scope_change
+BEFORE UPDATE OF initiative_id, work_package_id ON public.artifacts
+FOR EACH ROW EXECUTE FUNCTION private.guard_artifact_scope_change();
+
 -- Authorization helpers are SECURITY DEFINER to avoid RLS recursion.
 CREATE OR REPLACE FUNCTION private.has_active_unit_membership(
   target_org uuid,
@@ -380,13 +434,32 @@ USING (
   OR private.has_org_role(organization_id, ARRAY['owner','admin'])
 );
 
+-- Membership administration is a separate privilege from ordinary
+-- content contribution. Only organization owner/admin or an active unit_admin
+-- may manage grants; unit_admin grants cannot be created or changed by peers.
 CREATE POLICY unit_memberships_insert
 ON public.unit_memberships FOR INSERT TO authenticated
 WITH CHECK (
   private.has_org_role(organization_id, ARRAY['owner','admin'])
   OR (
-    private.has_unit_write_role(organization_id, organizational_unit_id)
-    AND role <> 'unit_admin'
+    role <> 'unit_admin'
+    AND EXISTS (
+      SELECT 1
+      FROM public.unit_memberships actor
+      JOIN public.memberships om
+        ON om.organization_id = actor.organization_id
+       AND om.user_id = actor.user_id
+      JOIN public.organizational_units u
+        ON u.organization_id = actor.organization_id
+       AND u.id = actor.organizational_unit_id
+      WHERE actor.organization_id = unit_memberships.organization_id
+        AND actor.organizational_unit_id = unit_memberships.organizational_unit_id
+        AND actor.user_id = (SELECT auth.uid())
+        AND actor.role = 'unit_admin'
+        AND actor.status = 'active'
+        AND om.status = 'active'
+        AND u.lifecycle_state = 'active'
+    )
   )
 );
 
@@ -395,15 +468,47 @@ ON public.unit_memberships FOR UPDATE TO authenticated
 USING (
   private.has_org_role(organization_id, ARRAY['owner','admin'])
   OR (
-    private.has_unit_write_role(organization_id, organizational_unit_id)
-    AND role <> 'unit_admin'
+    role <> 'unit_admin'
+    AND EXISTS (
+      SELECT 1
+      FROM public.unit_memberships actor
+      JOIN public.memberships om
+        ON om.organization_id = actor.organization_id
+       AND om.user_id = actor.user_id
+      JOIN public.organizational_units u
+        ON u.organization_id = actor.organization_id
+       AND u.id = actor.organizational_unit_id
+      WHERE actor.organization_id = unit_memberships.organization_id
+        AND actor.organizational_unit_id = unit_memberships.organizational_unit_id
+        AND actor.user_id = (SELECT auth.uid())
+        AND actor.role = 'unit_admin'
+        AND actor.status = 'active'
+        AND om.status = 'active'
+        AND u.lifecycle_state = 'active'
+    )
   )
 )
 WITH CHECK (
   private.has_org_role(organization_id, ARRAY['owner','admin'])
   OR (
-    private.has_unit_write_role(organization_id, organizational_unit_id)
-    AND role <> 'unit_admin'
+    role <> 'unit_admin'
+    AND EXISTS (
+      SELECT 1
+      FROM public.unit_memberships actor
+      JOIN public.memberships om
+        ON om.organization_id = actor.organization_id
+       AND om.user_id = actor.user_id
+      JOIN public.organizational_units u
+        ON u.organization_id = actor.organization_id
+       AND u.id = actor.organizational_unit_id
+      WHERE actor.organization_id = unit_memberships.organization_id
+        AND actor.organizational_unit_id = unit_memberships.organizational_unit_id
+        AND actor.user_id = (SELECT auth.uid())
+        AND actor.role = 'unit_admin'
+        AND actor.status = 'active'
+        AND om.status = 'active'
+        AND u.lifecycle_state = 'active'
+    )
   )
 );
 
@@ -412,8 +517,24 @@ ON public.unit_memberships FOR DELETE TO authenticated
 USING (
   private.has_org_role(organization_id, ARRAY['owner','admin'])
   OR (
-    private.has_unit_write_role(organization_id, organizational_unit_id)
-    AND role <> 'unit_admin'
+    role <> 'unit_admin'
+    AND EXISTS (
+      SELECT 1
+      FROM public.unit_memberships actor
+      JOIN public.memberships om
+        ON om.organization_id = actor.organization_id
+       AND om.user_id = actor.user_id
+      JOIN public.organizational_units u
+        ON u.organization_id = actor.organization_id
+       AND u.id = actor.organizational_unit_id
+      WHERE actor.organization_id = unit_memberships.organization_id
+        AND actor.organizational_unit_id = unit_memberships.organizational_unit_id
+        AND actor.user_id = (SELECT auth.uid())
+        AND actor.role = 'unit_admin'
+        AND actor.status = 'active'
+        AND om.status = 'active'
+        AND u.lifecycle_state = 'active'
+    )
   )
 );
 
@@ -529,12 +650,14 @@ USING (private.is_org_member(organization_id)
 WITH CHECK (private.is_org_member(organization_id)
   AND private.can_access_initiative(organization_id, initiative_id, true));
 
--- IMPORTANT REVIEW GATE:
--- The generic relationships table is intentionally not granted scoped access
--- by this proposal. It remains tenant-member visible in the current baseline,
--- which can disclose unit-scoped endpoint identifiers and relationship metadata.
--- Do not activate unit-scoped data until relationship endpoint authorization is
--- implemented and tested (or the table is disabled for unit-scoped endpoints).
+-- Fail closed for the generic polymorphic relationship graph. Until
+-- endpoint-aware authorization exists for BOTH source and target, authenticated
+-- access is disabled rather than exposing unit-scoped identifiers or edges.
+DROP POLICY IF EXISTS relationships_org_access ON public.relationships;
+CREATE POLICY relationships_deny_until_endpoint_authorization
+ON public.relationships FOR ALL TO authenticated
+USING (false)
+WITH CHECK (false);
 --
 -- Evidence records with both initiative_id and artifact_id must pass BOTH
 -- scope checks; the policies below enforce that intersection.
@@ -543,9 +666,8 @@ WITH CHECK (private.is_org_member(organization_id)
 -- The FOR ALL write policies require a write-capable unit role for scoped rows,
 -- preventing read-only roles from UPDATE/DELETE despite SELECT visibility.
 
--- Relationships are conservatively tenant-member visible in this proposal.
--- Before production, relationship endpoint authorization must be tightened
--- so edges cannot disclose unit-scoped entity identities or relationships.
+-- Relationship access remains denied for authenticated clients until
+-- a separate endpoint-aware policy is implemented and runtime-tested.
 
 GRANT SELECT, INSERT, UPDATE ON public.organizational_units TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.unit_memberships TO authenticated;

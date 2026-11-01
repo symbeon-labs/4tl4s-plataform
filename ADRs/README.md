@@ -38,3 +38,4 @@ Create an ADR when a decision materially affects:
 - [ADR-0001 — Separate operating domains under shared governance](ADR-0001-operating-domains.md)
 - [ADR-0002 — Preserve project autonomy and IP boundaries](ADR-0002-project-autonomy-and-ip-boundaries.md)
 - [ADR-0003 — Govern research-to-development transfer](ADR-0003-research-to-development-transfer.md)
+- [ADR-0004 — Represent organizational units separately and consume SOA context by reference](ADR-0004-organizational-units-and-soa-context.md)

@@ -1,4 +1,4 @@
-name: Database Validation
+﻿name: Database Validation
 
 on:
   pull_request:
@@ -68,7 +68,8 @@ jobs:
             apt-get update
             apt-get install -y ca-certificates curl
             install -d /usr/share/postgresql-common/pgdg
-            curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc               -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc
+            curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+              -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc
             . /etc/os-release
             echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" > /etc/apt/sources.list.d/pgdg.list
             apt-get update
@@ -130,17 +131,21 @@ jobs:
         run: |
           set -euo pipefail
           docker cp supabase/tests/database/p0_integrity_contracts.test.sql "$CONTAINER:/tmp/p0_integrity_contracts.test.sql"
-          docker exec "$CONTAINER" pg_prove             --dbname "postgresql://postgres:postgres@localhost:5432/fourtl4s_test"             /tmp/p0_integrity_contracts.test.sql
+          docker exec "$CONTAINER" pg_prove \
+            --dbname "postgresql://postgres:postgres@localhost:5432/fourtl4s_test" \
+            /tmp/p0_integrity_contracts.test.sql
 
-      - name: Parse and apply Organizational Unit proposal on disposable database
+      - name: Apply tenant seed (Hub Acai and Mundo do Sabor)
         env:
           CONTAINER: ${{ steps.postgres-tools.outputs.container }}
         run: |
           set -euo pipefail
-          docker cp supabase/proposals/organizational_unit_scoped_access_v0.1.sql "$CONTAINER:/tmp/organizational_unit_scoped_access_v0.1.sql"
-          docker exec "$CONTAINER" psql -U postgres -d fourtl4s_test -v ON_ERROR_STOP=1             -f /tmp/organizational_unit_scoped_access_v0.1.sql
+          if [ -f supabase/seed.sql ]; then
+            docker cp supabase/seed.sql "$CONTAINER:/tmp/seed.sql"
+            docker exec "$CONTAINER" psql -U postgres -d fourtl4s_test -v ON_ERROR_STOP=1 -f /tmp/seed.sql
+          fi
 
-      - name: Verify Organizational Unit proposal objects and fail-closed controls
+      - name: Verify Organizational Unit objects and fail-closed controls
         env:
           CONTAINER: ${{ steps.postgres-tools.outputs.container }}
         run: |

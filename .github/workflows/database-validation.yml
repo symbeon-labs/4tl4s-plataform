@@ -1,0 +1,154 @@
+name: Database Validation
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "supabase/**"
+      - ".github/workflows/database-validation.yml"
+  push:
+    branches:
+      - "feat/platform-foundation-mvp"
+    paths:
+      - "supabase/**"
+      - ".github/workflows/database-validation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: database-validation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  postgres-validation:
+    name: PostgreSQL migration and policy validation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: fourtl4s_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d fourtl4s_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGDATABASE: fourtl4s_test
+      PGUSER: postgres
+      PGPASSWORD: postgres
+
+    steps:
+      - name: Checkout pull request source
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client and pgTAP
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-17
+          docker ps --format '{{.ID}} {{.Image}}' | awk '$2 ~ /^postgres:17/ {print $1; exit}' > /tmp/postgres-container
+          CONTAINER="$(cat /tmp/postgres-container)"
+          test -n "$CONTAINER"
+          docker exec "$CONTAINER" bash -lc '
+            apt-get update &&
+            apt-get install -y postgresql-17-pgtap
+          '
+
+      - name: Bootstrap minimal Supabase Auth compatibility layer
+        run: |
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE ROLE anon NOLOGIN;
+          CREATE ROLE authenticated NOLOGIN;
+          CREATE ROLE service_role NOLOGIN BYPASSRLS;
+
+          CREATE SCHEMA auth;
+          CREATE TABLE auth.users (
+            id uuid PRIMARY KEY,
+            raw_user_meta_data jsonb NOT NULL DEFAULT '{}'::jsonb
+          );
+
+          CREATE OR REPLACE FUNCTION auth.uid()
+          RETURNS uuid
+          LANGUAGE sql
+          STABLE
+          AS $$
+            SELECT NULLIF(current_setting('request.jwt.claim.sub', true), '')::uuid;
+          $$;
+
+          GRANT USAGE ON SCHEMA auth TO anon, authenticated, service_role;
+          GRANT SELECT ON auth.users TO authenticated, service_role;
+          GRANT EXECUTE ON FUNCTION auth.uid() TO anon, authenticated, service_role;
+          CREATE EXTENSION IF NOT EXISTS pgtap;
+          SQL
+
+      - name: Apply repository migrations in timestamp order
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          migrations=(supabase/migrations/*.sql)
+          if [ "${#migrations[@]}" -eq 0 ]; then
+            echo "No migration files found."
+            exit 1
+          fi
+          for migration in "${migrations[@]}"; do
+            echo "::group::Applying $migration"
+            psql -v ON_ERROR_STOP=1 -f "$migration"
+            echo "::endgroup::"
+          done
+
+      - name: Run P0 pgTAP contract tests
+        run: |
+          pg_prove --dbname "postgresql://postgres:postgres@localhost:5432/fourtl4s_test" \
+            supabase/tests/database/p0_integrity_contracts.test.sql
+
+      - name: Parse and apply Organizational Unit proposal on disposable database
+        run: |
+          psql -v ON_ERROR_STOP=1 \
+            -f supabase/proposals/organizational_unit_scoped_access_v0.1.sql
+
+      - name: Verify Organizational Unit proposal objects and fail-closed controls
+        run: |
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$
+          BEGIN
+            IF to_regclass('public.organizational_units') IS NULL THEN
+              RAISE EXCEPTION 'organizational_units table was not created';
+            END IF;
+            IF to_regclass('public.unit_memberships') IS NULL THEN
+              RAISE EXCEPTION 'unit_memberships table was not created';
+            END IF;
+            IF NOT EXISTS (
+              SELECT 1 FROM pg_policies
+              WHERE schemaname = 'public'
+                AND tablename = 'relationships'
+                AND policyname = 'relationships_deny_until_endpoint_authorization'
+                AND cmd = 'ALL'
+            ) THEN
+              RAISE EXCEPTION 'Expected fail-closed relationships policy is missing';
+            END IF;
+            IF has_table_privilege('authenticated', 'public.audit_events', 'INSERT') THEN
+              RAISE EXCEPTION 'Authenticated role unexpectedly has audit_events INSERT privilege';
+            END IF;
+            IF EXISTS (
+              SELECT 1 FROM pg_policies
+              WHERE schemaname = 'public'
+                AND tablename = 'audit_events'
+                AND cmd = 'INSERT'
+                AND 'authenticated' = ANY(roles::text[])
+            ) THEN
+              RAISE EXCEPTION 'Authenticated audit_events INSERT policy unexpectedly exists';
+            END IF;
+          END;
+          $$;
+          SQL

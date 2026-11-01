@@ -231,6 +231,12 @@ AS $function$
      AND um.user_id = om.user_id
     WHERE om.organization_id = target_org
       AND um.organizational_unit_id = target_unit
+      AND EXISTS (
+        SELECT 1 FROM public.organizational_units u
+        WHERE u.organization_id = target_org
+          AND u.id = target_unit
+          AND u.lifecycle_state = 'active'
+      )
       AND om.user_id = (SELECT auth.uid())
       AND om.status = 'active'
       AND um.status = 'active'
@@ -253,6 +259,12 @@ AS $function$
      AND um.user_id = om.user_id
     WHERE om.organization_id = target_org
       AND um.organizational_unit_id = target_unit
+      AND EXISTS (
+        SELECT 1 FROM public.organizational_units u
+        WHERE u.organization_id = target_org
+          AND u.id = target_unit
+          AND u.lifecycle_state = 'active'
+      )
       AND om.user_id = (SELECT auth.uid())
       AND om.status = 'active'
       AND um.status = 'active'

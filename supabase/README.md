@@ -56,7 +56,7 @@ supabase start
 supabase test db
 ```
 
-The test file is a catalog-level contract suite. It does **not** yet prove behavior under distinct authenticated JWT identities or concurrent owner-removal attempts. Those runtime tests must use isolated test identities and tenant fixtures in a disposable local/test database, never production.
+The test file is a catalog-level contract suite. It passed in the GitHub Actions PostgreSQL 17 validation workflow on 2026-11-01 (14 assertions). It does **not** prove behavior under distinct authenticated JWT identities or concurrent owner-removal attempts. Those runtime tests must use isolated test identities and tenant fixtures in a disposable local/test database, never production.
 
 ## Remaining limitations before production
 
@@ -100,4 +100,4 @@ Selected policy proposal:
 
 **Relationship control:** the proposal now denies authenticated access to `relationships` until endpoint-aware authorization is implemented and runtime-tested. This is a deliberate fail-closed restriction; relationship graph functionality is unavailable under the proposal.
 
-This SQL is stored under `proposals/`, not `migrations/`. It has not been applied, parsed by a PostgreSQL server, or runtime-tested. Do not execute it in production. ADR-0005 and the domain/security contracts remain proposed pending review and approval.
+This SQL is stored under `proposals/`, not `migrations/`. It was successfully parsed and applied against a disposable PostgreSQL 17 database in GitHub Actions on 2026-11-01. This validates syntax and object creation only; authenticated authorization behavior and concurrency have not been runtime-tested. Do not execute it in production. ADR-0005 and the domain/security contracts remain proposed pending review and approval.

@@ -82,3 +82,22 @@ No customer records, RS Advogados information, or third-party project payloads w
 5. Add audited APIs and scoped GitHub integration.
 6. Configure Storage with private buckets and organization-scoped policies.
 7. Run lint, type checks, build, and security review before opening the MVP for operational use.
+
+
+## Organizational Unit access proposal (not applied)
+
+The design package is available under `proposals/`:
+
+- `organizational_unit_scoped_access_v0.1.sql` — proposed schema, helper functions, hierarchy and scope-consistency guards, and scope-aware RLS policies.
+- `organizational_unit_validation_matrix_v0.1.md` — synthetic multi-tenant authorization and integrity test matrix.
+
+Selected policy proposal:
+- Unassigned organization-level initiatives remain available to active members of that organization, preserving the current baseline.
+- Unit-scoped initiatives and descendants require explicit active Unit Membership.
+- Organization owners/admins manage unit structure but do not automatically gain access to unit-scoped content.
+- Read-only unit roles can read; only unit_admin, unit_manager and contributor roles can write ordinary unit-scoped work.
+- Suspended organization membership or inactive unit lifecycle blocks unit-content access.
+
+**Critical pre-activation blocker:** the generic `relationships` table remains tenant-member visible in this proposal. Its polymorphic endpoints can reveal unit-scoped entity identifiers. Endpoint-aware authorization or a safe endpoint restriction must be implemented and tested before unit-scoped production records are activated.
+
+This SQL is stored under `proposals/`, not `migrations/`. It has not been applied, parsed by a PostgreSQL server, or runtime-tested. Do not execute it in production. ADR-0005 and the domain/security contracts remain proposed pending review and approval.

@@ -86,6 +86,12 @@ AS $function$
 DECLARE
   cycle_found boolean;
 BEGIN
+  -- Serialize hierarchy mutations per organization to prevent concurrent
+  -- parent changes from creating a cycle.
+  PERFORM 1 FROM public.organizations
+   WHERE id = NEW.organization_id
+   FOR UPDATE;
+
   IF TG_OP = 'UPDATE' THEN
     IF NEW.id IS DISTINCT FROM OLD.id
        OR NEW.organization_id IS DISTINCT FROM OLD.organization_id
@@ -127,6 +133,86 @@ REVOKE ALL ON FUNCTION private.guard_organizational_unit() FROM PUBLIC, anon, au
 CREATE TRIGGER organizational_units_guard
 BEFORE INSERT OR UPDATE ON public.organizational_units
 FOR EACH ROW EXECUTE FUNCTION private.guard_organizational_unit();
+
+-- Keep an artifact's explicit initiative consistent with its work package.
+CREATE OR REPLACE FUNCTION private.guard_artifact_scope_consistency()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $function$
+DECLARE
+  package_initiative uuid;
+BEGIN
+  IF NEW.work_package_id IS NOT NULL THEN
+    SELECT wp.initiative_id INTO package_initiative
+    FROM public.work_packages wp
+    WHERE wp.organization_id = NEW.organization_id
+      AND wp.id = NEW.work_package_id;
+
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'Artifact work package must exist in the same organization'
+        USING ERRCODE = '23503';
+    END IF;
+
+    IF NEW.initiative_id IS NOT NULL
+       AND NEW.initiative_id IS DISTINCT FROM package_initiative THEN
+      RAISE EXCEPTION 'Artifact initiative must match its work package initiative'
+        USING ERRCODE = '23514';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION private.guard_evidence_scope_consistency()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $function$
+DECLARE
+  artifact_initiative uuid;
+BEGIN
+  IF NEW.artifact_id IS NOT NULL THEN
+    SELECT COALESCE(
+      a.initiative_id,
+      (SELECT wp.initiative_id
+       FROM public.work_packages wp
+       WHERE wp.organization_id = a.organization_id
+         AND wp.id = a.work_package_id)
+    ) INTO artifact_initiative
+    FROM public.artifacts a
+    WHERE a.organization_id = NEW.organization_id
+      AND a.id = NEW.artifact_id;
+
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'Evidence artifact must exist in the same organization'
+        USING ERRCODE = '23503';
+    END IF;
+
+    IF NEW.initiative_id IS NOT NULL
+       AND NEW.initiative_id IS DISTINCT FROM artifact_initiative THEN
+      RAISE EXCEPTION 'Evidence initiative must match its artifact initiative'
+        USING ERRCODE = '23514';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION private.guard_artifact_scope_consistency() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION private.guard_evidence_scope_consistency() FROM PUBLIC, anon, authenticated;
+
+CREATE TRIGGER artifacts_guard_scope_consistency
+BEFORE INSERT OR UPDATE OF organization_id, initiative_id, work_package_id
+ON public.artifacts
+FOR EACH ROW EXECUTE FUNCTION private.guard_artifact_scope_consistency();
+
+CREATE TRIGGER evidence_guard_scope_consistency
+BEFORE INSERT OR UPDATE OF organization_id, initiative_id, artifact_id
+ON public.evidence_records
+FOR EACH ROW EXECUTE FUNCTION private.guard_evidence_scope_consistency();
 
 -- Authorization helpers are SECURITY DEFINER to avoid RLS recursion.
 CREATE OR REPLACE FUNCTION private.has_active_unit_membership(

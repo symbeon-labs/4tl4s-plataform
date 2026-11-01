@@ -1,10 +1,10 @@
--- pgTAP contract tests for the 4TL4S P0 database hardening.
+﻿-- pgTAP contract tests for the 4TL4S P0 database hardening.
 -- These tests inspect installed schema contracts; they do not substitute for
 -- authenticated multi-tenant runtime tests with distinct JWT identities.
 
 BEGIN;
 
-SELECT plan(14);
+SELECT plan(16);
 
 SELECT is(
   (SELECT count(*)::integer
@@ -13,8 +13,7 @@ SELECT is(
    WHERE n.nspname = 'public'
      AND c.relkind = 'r'
      AND c.relrowsecurity),
-  12,
-  'RLS is enabled on all 12 public tables'
+  14, 'RLS is enabled on all 14 public tables (including organizational units and memberships)'
 );
 
 SELECT ok(
@@ -168,6 +167,28 @@ SELECT ok(
 SELECT ok(
   NOT has_table_privilege('authenticated', 'public.audit_events', 'INSERT'),
   'Authenticated role has no direct audit-event INSERT grant'
+);
+
+SELECT ok(
+  (SELECT count(*) = 2
+   FROM pg_constraint
+   WHERE connamespace = 'public'::regnamespace
+     AND conname IN (
+       'organizational_units_parent_same_org_fkey',
+       'unit_memberships_unit_same_org_fkey'
+     )),
+  'Composite foreign keys enforce tenant-safe unit hierarchy and unit memberships'
+);
+
+SELECT ok(
+  EXISTS (
+    SELECT 1 FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public'
+      AND c.relname = 'organizational_units'
+      AND c.relrowsecurity
+  ),
+  'Organizational units table has Row Level Security strictly enforced'
 );
 
 SELECT * FROM finish();

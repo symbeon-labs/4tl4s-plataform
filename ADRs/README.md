@@ -1,4 +1,4 @@
-# Architecture Decision Records
+﻿# Architecture Decision Records
 
 Architecture Decision Records (ADRs) preserve consequential decisions and their rationale. They prevent assumptions from silently becoming architecture.
 
@@ -41,4 +41,4 @@ Create an ADR when a decision materially affects:
 - [ADR-0004 — Represent organizational units separately and consume SOA context by reference](ADR-0004-organizational-units-and-soa-context.md)
 - [ADR-0005 — Introduce first-class organizational units with explicit scoped access](ADR-0005-organizational-unit-scoped-access.md)
 
-ADR-0005 is **Proposed** and depends on review of the domain and authorization contracts. No schema or runtime implementation is implied.
+ADR-0005 is **Accepted** and its database migration is active under supabase/migrations/20261101150000_organizational_unit_scoped_access.sql.

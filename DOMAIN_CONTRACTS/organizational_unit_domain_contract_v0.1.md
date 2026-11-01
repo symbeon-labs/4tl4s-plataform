@@ -72,7 +72,7 @@ Constraints:
 
 ### Initiative association
 
-Add nullable organizational_unit_id to initiatives only after migration approval. Enforce a composite FK on organization_id and organizational_unit_id. Null means organization-level/unassigned scope; it does not mean public or accessible to every organization member.
+Add nullable organizational_unit_id to initiatives only after migration approval. Enforce a composite FK on organization_id and organizational_unit_id. Null means organization-level/unassigned scope. Under the selected default policy, active members of the organization may read and work with unassigned initiatives and their descendants. This is tenant-authenticated access, not public access.
 
 Work packages, artifacts, evidence and decisions inherit the Initiative's narrowest access scope. Child records cannot be exposed more broadly than their parent. Existing tenant-scoped composite FKs remain mandatory.
 

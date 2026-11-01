@@ -321,21 +321,28 @@ USING (
 
 -- Replace broad tenant-only content policies with scope-aware policies.
 DROP POLICY IF EXISTS initiatives_org_access ON public.initiatives;
-CREATE POLICY initiatives_scoped_access
+CREATE POLICY initiatives_scoped_read
+ON public.initiatives FOR SELECT TO authenticated
+USING (private.can_access_initiative(organization_id, id, false));
+CREATE POLICY initiatives_scoped_write
 ON public.initiatives FOR ALL TO authenticated
-USING (private.can_access_initiative(organization_id, id, false))
+USING (private.can_access_initiative(organization_id, id, true))
 WITH CHECK (private.can_access_initiative(organization_id, id, true));
 
 DROP POLICY IF EXISTS work_packages_org_access ON public.work_packages;
-CREATE POLICY work_packages_scoped_access
+CREATE POLICY work_packages_scoped_read
+ON public.work_packages FOR SELECT TO authenticated
+USING (private.can_access_initiative(organization_id, initiative_id, false));
+CREATE POLICY work_packages_scoped_write
 ON public.work_packages FOR ALL TO authenticated
-USING (private.can_access_initiative(organization_id, initiative_id, false))
+USING (private.can_access_initiative(organization_id, initiative_id, true))
 WITH CHECK (private.can_access_initiative(organization_id, initiative_id, true));
 
 DROP POLICY IF EXISTS artifacts_org_access ON public.artifacts;
-CREATE POLICY artifacts_scoped_access
-ON public.artifacts FOR ALL TO authenticated
-USING (private.is_org_member(organization_id)
+CREATE POLICY artifacts_scoped_read
+ON public.artifacts FOR SELECT TO authenticated
+USING (
+  private.is_org_member(organization_id)
   AND (
     (initiative_id IS NOT NULL AND private.can_access_initiative(organization_id, initiative_id, false))
     OR (initiative_id IS NULL AND work_package_id IS NOT NULL
@@ -346,8 +353,12 @@ USING (private.is_org_member(organization_id)
             AND private.can_access_initiative(wp.organization_id, wp.initiative_id, false)
         ))
     OR (initiative_id IS NULL AND work_package_id IS NULL)
-  ))
-WITH CHECK (private.is_org_member(organization_id)
+  )
+);
+CREATE POLICY artifacts_scoped_write
+ON public.artifacts FOR ALL TO authenticated
+USING (
+  private.is_org_member(organization_id)
   AND (
     (initiative_id IS NOT NULL AND private.can_access_initiative(organization_id, initiative_id, true))
     OR (initiative_id IS NULL AND work_package_id IS NOT NULL
@@ -358,49 +369,81 @@ WITH CHECK (private.is_org_member(organization_id)
             AND private.can_access_initiative(wp.organization_id, wp.initiative_id, true)
         ))
     OR (initiative_id IS NULL AND work_package_id IS NULL)
-  ));
-
-DROP POLICY IF EXISTS evidence_org_access ON public.evidence_records;
-CREATE POLICY evidence_scoped_access
-ON public.evidence_records FOR ALL TO authenticated
-USING (private.is_org_member(organization_id)
-  AND (
-    (initiative_id IS NOT NULL AND private.can_access_initiative(organization_id, initiative_id, false))
-    OR (initiative_id IS NULL AND artifact_id IS NOT NULL
-        AND private.can_access_artifact(organization_id, artifact_id, false))
-    OR (initiative_id IS NULL AND artifact_id IS NULL)
-  ))
-WITH CHECK (private.is_org_member(organization_id)
+  )
+)
+WITH CHECK (
+  private.is_org_member(organization_id)
   AND (
     (initiative_id IS NOT NULL AND private.can_access_initiative(organization_id, initiative_id, true))
-    OR (initiative_id IS NULL AND artifact_id IS NOT NULL
-        AND private.can_access_artifact(organization_id, artifact_id, true))
-    OR (initiative_id IS NULL AND artifact_id IS NULL)
-  ));
+    OR (initiative_id IS NULL AND work_package_id IS NOT NULL
+        AND EXISTS (
+          SELECT 1 FROM public.work_packages wp
+          WHERE wp.organization_id = artifacts.organization_id
+            AND wp.id = artifacts.work_package_id
+            AND private.can_access_initiative(wp.organization_id, wp.initiative_id, true)
+        ))
+    OR (initiative_id IS NULL AND work_package_id IS NULL)
+  )
+);
+
+DROP POLICY IF EXISTS evidence_org_access ON public.evidence_records;
+CREATE POLICY evidence_scoped_read
+ON public.evidence_records FOR SELECT TO authenticated
+USING (
+  private.is_org_member(organization_id)
+  AND (initiative_id IS NULL OR private.can_access_initiative(organization_id, initiative_id, false))
+  AND (artifact_id IS NULL OR private.can_access_artifact(organization_id, artifact_id, false))
+);
+CREATE POLICY evidence_scoped_write
+ON public.evidence_records FOR ALL TO authenticated
+USING (
+  private.is_org_member(organization_id)
+  AND (initiative_id IS NULL OR private.can_access_initiative(organization_id, initiative_id, true))
+  AND (artifact_id IS NULL OR private.can_access_artifact(organization_id, artifact_id, true))
+)
+WITH CHECK (
+  private.is_org_member(organization_id)
+  AND (initiative_id IS NULL OR private.can_access_initiative(organization_id, initiative_id, true))
+  AND (artifact_id IS NULL OR private.can_access_artifact(organization_id, artifact_id, true))
+);
 
 DROP POLICY IF EXISTS decisions_org_access ON public.decision_records;
-CREATE POLICY decisions_scoped_access
+CREATE POLICY decisions_scoped_read
+ON public.decision_records FOR SELECT TO authenticated
+USING (private.is_org_member(organization_id)
+  AND private.can_access_initiative(organization_id, initiative_id, false));
+CREATE POLICY decisions_scoped_write
 ON public.decision_records FOR ALL TO authenticated
-USING (
-  private.is_org_member(organization_id)
-  AND private.can_access_initiative(organization_id, initiative_id, false)
-)
-WITH CHECK (
-  private.is_org_member(organization_id)
-  AND private.can_access_initiative(organization_id, initiative_id, true)
-);
+USING (private.is_org_member(organization_id)
+  AND private.can_access_initiative(organization_id, initiative_id, true))
+WITH CHECK (private.is_org_member(organization_id)
+  AND private.can_access_initiative(organization_id, initiative_id, true));
 
 DROP POLICY IF EXISTS ip_assets_org_access ON public.ip_assets;
-CREATE POLICY ip_assets_scoped_access
+CREATE POLICY ip_assets_scoped_read
+ON public.ip_assets FOR SELECT TO authenticated
+USING (private.is_org_member(organization_id)
+  AND private.can_access_initiative(organization_id, initiative_id, false));
+CREATE POLICY ip_assets_scoped_write
 ON public.ip_assets FOR ALL TO authenticated
-USING (
-  private.is_org_member(organization_id)
-  AND private.can_access_initiative(organization_id, initiative_id, false)
-)
-WITH CHECK (
-  private.is_org_member(organization_id)
-  AND private.can_access_initiative(organization_id, initiative_id, true)
-);
+USING (private.is_org_member(organization_id)
+  AND private.can_access_initiative(organization_id, initiative_id, true))
+WITH CHECK (private.is_org_member(organization_id)
+  AND private.can_access_initiative(organization_id, initiative_id, true));
+
+-- IMPORTANT REVIEW GATE:
+-- The generic relationships table is intentionally not granted scoped access
+-- by this proposal. It remains tenant-member visible in the current baseline,
+-- which can disclose unit-scoped endpoint identifiers and relationship metadata.
+-- Do not activate unit-scoped data until relationship endpoint authorization is
+-- implemented and tested (or the table is disabled for unit-scoped endpoints).
+--
+-- Evidence records with both initiative_id and artifact_id must pass BOTH
+-- scope checks; the policies below enforce that intersection.
+--
+-- The SELECT policies provide read access (including viewer/reviewer roles).
+-- The FOR ALL write policies require a write-capable unit role for scoped rows,
+-- preventing read-only roles from UPDATE/DELETE despite SELECT visibility.
 
 -- Relationships are conservatively tenant-member visible in this proposal.
 -- Before production, relationship endpoint authorization must be tightened

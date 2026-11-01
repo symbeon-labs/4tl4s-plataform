@@ -18,7 +18,7 @@ Each active project has a **Project Workspace** composed of:
 5. risks, blockers, decisions, and evidence;
 6. a clear next-action area.
 
-The roadmap checklist should be embedded in the project information presented, not hidden in a detached planning document.
+The roadmap checklist should be embedded in the project information presented, not hidden in a detached planning document. This workspace is one experience within 4TL4S, not the whole product.
 
 ## Project header
 
@@ -100,32 +100,46 @@ Never expose by default:
 
 Client access must be enforced server-side through organization, project, and record-level authorization. A frontend toggle or hidden component is not a security boundary.
 
-## Visual direction — V0-inspired
+## Visual direction — Dark-first, V0-inspired
 
-Use the visual language associated with polished V0-generated SaaS interfaces as an inspiration, not as a claim of affiliation or a pixel-perfect copy.
+The 4TL4S interface adopts a **dark-first visual system**. Light mode may be considered later as an explicit secondary theme, but dark mode is the canonical design baseline for the initial product experience.
 
-Desired qualities:
-- clean, restrained, contemporary enterprise interface;
-- clear typographic hierarchy;
-- generous but efficient spacing;
-- neutral surfaces and subtle borders;
-- carefully limited accent color;
-- compact, legible status badges;
-- refined cards and data tables;
-- clear navigation and breadcrumb hierarchy;
-- responsive layouts for desktop, tablet, and mobile;
-- strong contrast and accessible interaction states;
-- purposeful empty, loading, error, and permission-denied states.
+Use the visual language associated with polished V0-generated SaaS interfaces as inspiration, not as a claim of affiliation or a pixel-perfect copy. The result should have its own Symbeon identity.
 
-Avoid:
-- excessive gradients and decorative effects;
-- dense dashboards with too many competing cards;
-- oversized charts without decision value;
-- color as the only status indicator;
-- fake progress metrics;
-- decorative checkboxes without operational meaning.
+### Visual character
+- dark graphite / near-black application canvas, avoiding pure black as the only surface;
+- layered charcoal surfaces for navigation, cards, panels, and overlays;
+- subtle neutral borders and restrained separators;
+- high-contrast primary text and calm secondary text;
+- one controlled accent color for primary actions and selected states;
+- semantic status colors used sparingly and always paired with text labels;
+- clear typographic hierarchy and generous but efficient spacing;
+- refined tables, compact badges, and precise data presentation;
+- restrained transitions and purposeful hover/focus states;
+- responsive layouts for desktop, tablet, and mobile.
 
-The visual system should communicate precision, calm, reliability, and professional delivery. Final tokens, typography, components, and responsive behavior must follow the product's own design system once established.
+### Surface hierarchy
+Establish a clear depth system:
+1. **Canvas:** deepest neutral background for the application shell.
+2. **Navigation / Sidebar:** slightly elevated or differentiated dark surface.
+3. **Primary panels:** readable charcoal surfaces for project content.
+4. **Interactive surfaces:** hover, selected, focused, and expanded states with clear contrast.
+5. **Overlays:** dialogs, command menus, and popovers with distinct elevation and boundaries.
+
+Do not rely on shadows alone to distinguish dark surfaces; use subtle luminance differences and borders.
+
+### Interaction and readability
+- maintain WCAG-conscious contrast for text and interactive controls;
+- never use muted gray text that becomes illegible on dark surfaces;
+- ensure keyboard focus is visible against every surface;
+- pair status colors with labels and, where useful, icons;
+- make disabled, loading, error, empty, and permission-denied states explicit;
+- avoid excessive gradients, neon effects, glassmorphism, and decorative glow;
+- avoid dense dashboards with too many competing cards;
+- avoid oversized charts without decision value;
+- avoid fake progress metrics and decorative checkboxes without operational meaning.
+
+The visual system should communicate precision, calm, technical confidence, and professional delivery—not a generic cyberpunk aesthetic. Final tokens, typography, components, and responsive behavior must follow the product's own design system once established.
 
 ## Suggested page hierarchy
 

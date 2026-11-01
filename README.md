@@ -1,4 +1,4 @@
-# 4TL4S — Symbeon Operations Platform
+﻿# 4TL4S — Symbeon Operations Platform
 
 **Research · Engineering · Production · Commercial Operations**
 
@@ -61,6 +61,7 @@ This repository is the foundation for 4TL4S. The initial product charter, domain
 - [Artifact Production](ARTIFACT_PRODUCTION/README.md)
 - [Commercial Operations](COMMERCIAL_OPERATIONS/README.md)
 - [Architecture Decision Records](ADRs/README.md)
+- [Industry Benchmarks](BENCHMARKS/README.md)
 
 ## Status
 

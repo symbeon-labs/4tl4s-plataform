@@ -92,3 +92,31 @@ PR #3 remains open and draft, based on `feat/managed-engineering-operating-model
 7. Security review and advisor checks are repeated after implementation.
 
 **Conclusion:** the live database's known P0 schema misconfiguration is corrected, and additional catalog evidence supports the existing tenant and last-owner controls. The remaining P0 work is executable runtime testing and a trusted audit pipeline; these cannot honestly be closed by documentation-only changes.
+
+
+## 2026-11-02 — catalog contract execution
+
+A read-only SQL execution was run against the connected live project to evaluate the same 14 catalog assertions defined in `supabase/tests/database/p0_integrity_contracts.test.sql`.
+
+**Result: 14/14 PASS.**
+
+| # | Assertion | Result |
+|---:|---|---|
+| 1 | RLS enabled on all 12 public tables | PASS |
+| 2 | Eight tenant-scoped parent foreign keys installed | PASS |
+| 3 | Four tenant-scoped unique keys installed | PASS |
+| 4 | Relationship endpoint validation trigger installed | PASS |
+| 5 | Membership invariant trigger installed | PASS |
+| 6 | Organization identity trigger installed | PASS |
+| 7 | Four consolidated membership policies | PASS |
+| 8 | No duplicate permissive policy groups | PASS |
+| 9 | Four private trigger helpers are SECURITY DEFINER with explicit search_path | PASS |
+| 10 | Authenticated cannot execute endpoint helper | PASS |
+| 11 | Authenticated cannot execute membership guard helper | PASS |
+| 12 | Authenticated cannot execute organization guard helper | PASS |
+| 13 | Authenticated has no audit INSERT policy | PASS |
+| 14 | Authenticated has no audit INSERT grant | PASS |
+
+**Important test boundary:** this was an equivalent read-only catalog query, not execution of the pgTAP file. The live project does not have the `pgtap` extension installed. The container environment also could not clone the GitHub repository (DNS/network unavailable), and no local Supabase CLI/test stack was available. Therefore `supabase test db` remains unexecuted.
+
+No data writes or destructive operations were performed. Authenticated multi-tenant behavior and concurrent last-owner behavior remain untested.

@@ -127,3 +127,19 @@ The repository also contained `20261101140000_harden_audit_event_ingestion.sql`,
 **Result:** the active migration directory now corresponds to the five versions recorded in the connected live migration ledger. This was a repository-only reconciliation; no live schema or migration history was changed.
 
 The fresh CI run must still confirm that the renamed canonical migration sequence replays successfully from an empty disposable database.
+
+
+## 2026-11-02 — fresh integration-branch migration replay
+
+The migration-replay requirement in section 5 was satisfied on integration code commit `059342676c6a4d4ea03d0fd400aa0301f10948e9`.
+
+- GitHub Actions Database Validation run: `41545893344`
+- Job: `125621300128`
+- Conclusion: `success`
+- All five active migrations replayed successfully against a disposable PostgreSQL 17 database.
+- Both pgTAP suites passed: 26 total tests across two files.
+- The Organizational Unit proposal also parsed and passed its fail-closed verification in that disposable database.
+
+This closes the fresh migration-replay and catalog/runtime pgTAP CI evidence items for the tested code commit. It does not close the remaining M02 concurrency/Auth lifecycle tests, M03 trusted audit ingestion, M04 Storage/Auth controls, or production readiness. The PR remains draft and requires human review; no merge or live migration was performed.
+
+The subsequent commits `d8e729f` and `708da0f` update audit documentation only. They do not change migrations, tests, workflows, or application code. The test evidence above is therefore explicitly tied to code commit `059342676c6a4d4ea03d0fd400aa0301f10948e9`, not represented as a check run on those documentation-only commits.

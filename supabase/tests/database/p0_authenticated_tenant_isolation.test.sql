@@ -5,7 +5,7 @@
 
 BEGIN;
 
-SELECT plan(10);
+SELECT plan(12);
 
 -- Synthetic identities: user A owns tenant A; user B owns tenant B;
 -- user C is an admin in tenant A; user D is a target for escalation attempts.
@@ -64,27 +64,17 @@ SELECT throws_ok(
   'Tenant A owner cannot insert an initiative into tenant B'
 );
 
-SELECT is(
-  (WITH changed AS (
-     UPDATE public.initiatives
-        SET name = 'Unauthorized tenant B mutation'
-      WHERE id = 'b1000000-0000-4000-8000-000000000002'
-      RETURNING 1
-   )
-   SELECT count(*)::integer FROM changed),
-  0,
-  'Tenant A owner cannot update tenant B initiative'
+SELECT lives_ok(
+  $UPDATE public.initiatives
+       SET name = 'Unauthorized tenant B mutation'
+     WHERE id = 'b1000000-0000-4000-8000-000000000002'$,
+  'Tenant A update against tenant B is filtered without an error'
 );
 
-SELECT is(
-  (WITH removed AS (
-     DELETE FROM public.initiatives
-      WHERE id = 'b1000000-0000-4000-8000-000000000002'
-      RETURNING 1
-   )
-   SELECT count(*)::integer FROM removed),
-  0,
-  'Tenant A owner cannot delete tenant B initiative'
+SELECT lives_ok(
+  $DELETE FROM public.initiatives
+     WHERE id = 'b1000000-0000-4000-8000-000000000002'$,
+  'Tenant A delete against tenant B is filtered without an error'
 );
 
 SELECT throws_ok(
@@ -159,6 +149,20 @@ SELECT throws_ok(
 );
 
 RESET ROLE;
+
+SELECT is(
+  (SELECT name FROM public.initiatives
+   WHERE id = 'b1000000-0000-4000-8000-000000000002'),
+  'Tenant B Initiative',
+  'Tenant B initiative remains unchanged after Tenant A update attempt'
+);
+
+SELECT is(
+  (SELECT count(*)::integer FROM public.initiatives
+   WHERE id = 'b1000000-0000-4000-8000-000000000002'),
+  1,
+  'Tenant B initiative remains present after Tenant A delete attempt'
+);
 
 SELECT * FROM finish();
 

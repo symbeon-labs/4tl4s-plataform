@@ -72,3 +72,6 @@ The first Database Validation run after the PGDG installation repair successfull
 The workflow was corrected to copy both test files into the PostgreSQL service container and execute `pg_prove` there. This keeps the client binary and PostgreSQL runtime in the same container.
 
 The next run must verify this correction and the M02 assertions on the current integration head.
+
+
+The JWT subject changes use `SET LOCAL request.jwt.claim.sub` rather than SELECT-returning `set_config` calls, so setup statements do not emit non-TAP rows into the pgTAP output stream.

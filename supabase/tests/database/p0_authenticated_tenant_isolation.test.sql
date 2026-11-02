@@ -65,15 +65,15 @@ SELECT throws_ok(
 );
 
 SELECT lives_ok(
-  $UPDATE public.initiatives
+  $$UPDATE public.initiatives
        SET name = 'Unauthorized tenant B mutation'
-     WHERE id = 'b1000000-0000-4000-8000-000000000002'$,
+     WHERE id = 'b1000000-0000-4000-8000-000000000002'$$,
   'Tenant A update against tenant B is filtered without an error'
 );
 
 SELECT lives_ok(
-  $DELETE FROM public.initiatives
-     WHERE id = 'b1000000-0000-4000-8000-000000000002'$,
+  $$DELETE FROM public.initiatives
+     WHERE id = 'b1000000-0000-4000-8000-000000000002'$$,
   'Tenant A delete against tenant B is filtered without an error'
 );
 

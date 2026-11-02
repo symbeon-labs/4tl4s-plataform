@@ -32,7 +32,7 @@ VALUES
   ('b1000000-0000-4000-8000-000000000002', 'b0000000-0000-4000-8000-000000000002', 'Tenant B Initiative', 'product_development', 'active', '20000000-0000-4000-8000-000000000002');
 
 SET LOCAL ROLE authenticated;
-SELECT set_config('request.jwt.claim.sub', '10000000-0000-4000-8000-000000000001', true);
+SET LOCAL request.jwt.claim.sub = '10000000-0000-4000-8000-000000000001';
 
 SELECT is(
   (SELECT count(*)::integer FROM public.initiatives
@@ -131,7 +131,7 @@ SELECT throws_ok(
   'Authenticated client cannot directly fabricate audit events'
 );
 
-SELECT set_config('request.jwt.claim.sub', '20000000-0000-4000-8000-000000000002', true);
+SET LOCAL request.jwt.claim.sub = '20000000-0000-4000-8000-000000000002';
 
 SELECT is(
   (SELECT count(*)::integer FROM public.initiatives
@@ -143,7 +143,7 @@ SELECT is(
   'Switching JWT subject to tenant B exposes only tenant B initiative'
 );
 
-SELECT set_config('request.jwt.claim.sub', '30000000-0000-4000-8000-000000000003', true);
+SET LOCAL request.jwt.claim.sub = '30000000-0000-4000-8000-000000000003';
 
 SELECT throws_ok(
   $$INSERT INTO public.memberships

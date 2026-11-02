@@ -134,3 +134,31 @@ A subsequent inspection of GitHub Actions found a successful **Database pgTAP** 
 This supersedes the earlier statement that no pgTAP execution had been evidenced for that PR head. The evidence is specifically tied to the PR #3 commit above; it does **not** establish authenticated multi-tenant behavior with distinct JWT identities, the two-session last-owner race, trusted audit ingestion, Auth lifecycle hardening, Storage policies, or production readiness.
 
 The new canonical integration branch contains documentation-only benchmark imports on top of that tested database baseline. A fresh workflow run against the integration PR head is still required before M01 can be considered fully verified.
+
+
+## 2026-11-02 — authenticated runtime suite and proposal replay verified
+
+This addendum supersedes the earlier statements in this document that the authenticated pgTAP suite remained unexecuted.
+
+On integration code commit `059342676c6a4d4ea03d0fd400aa0301f10948e9`, GitHub Actions **Database Validation** completed successfully:
+
+- Run: `41545893344`
+- Job: `125621300128`
+- Result: `success`
+- Disposable database: PostgreSQL 17
+- Migration replay: all five active repository migrations applied successfully
+- `p0_integrity_contracts.test.sql`: PASS
+- `p0_authenticated_tenant_isolation.test.sql`: PASS
+- Combined pgTAP result: `Files=2, Tests=26, Result=PASS`
+- Organizational Unit proposal: parsed/applied to the disposable database; subsequent fail-closed object/policy verification passed.
+
+The M02 suite contains twelve authenticated tenant-isolation assertions. It uses synthetic identities and transaction rollback. This is test evidence against the disposable CI database, not a live Supabase security test.
+
+The earlier failed runs exposed and the integration branch corrected:
+1. Invalid dollar-quote delimiters around UPDATE/DELETE test statements.
+2. A data-modifying CTE nested inside a scalar pgTAP assertion; replaced by a direct `lives_ok()` INSERT.
+3. Two literal escaped newline sequences in the OU proposal's REVOKE/GRANT statements.
+
+**Still open:** two-session concurrent last-owner race; stale JWT/session revocation; Auth lifecycle and Storage authorization; trusted audit ingestion; client-data classification; production security review. OU remains Proposed and is not activated in the live schema. No live database writes were made by these CI runs.
+
+A separate full local-Supabase CLI pgTAP workflow for the same code commit was still running at the time this addendum was written; its final result must be checked before claiming that workflow passed.

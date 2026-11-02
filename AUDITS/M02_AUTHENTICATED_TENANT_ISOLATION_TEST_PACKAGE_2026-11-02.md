@@ -63,3 +63,12 @@ After the CI suite passes on the exact integration PR head:
 2. Add the two-session last-owner concurrency test in a separate isolated harness.
 3. Add stale-session/revocation tests at the Auth/API boundary.
 4. Keep client onboarding blocked until the complete P0 test set and trusted audit-ingestion decision are satisfied.
+
+
+## 7. CI harness correction
+
+The first Database Validation run after the PGDG installation repair successfully installed pgTAP and replayed the migration files, but failed at the test step with `pg_prove: command not found`. The package had been installed inside the PostgreSQL service container while the workflow invoked `pg_prove` on the GitHub runner host.
+
+The workflow was corrected to copy both test files into the PostgreSQL service container and execute `pg_prove` there. This keeps the client binary and PostgreSQL runtime in the same container.
+
+The next run must verify this correction and the M02 assertions on the current integration head.

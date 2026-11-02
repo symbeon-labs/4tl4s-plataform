@@ -119,10 +119,17 @@ jobs:
           done
 
       - name: Run P0 pgTAP contract tests
+        shell: bash
         run: |
-          pg_prove --dbname "postgresql://postgres:postgres@localhost:5432/fourtl4s_test" \
-            supabase/tests/database/p0_integrity_contracts.test.sql \
-            supabase/tests/database/p0_authenticated_tenant_isolation.test.sql
+          set -euo pipefail
+          CONTAINER="$(docker ps --format '{{.ID}} {{.Image}}' | awk '$2 ~ /^postgres:17/ {print $1; exit}')"
+          test -n "$CONTAINER"
+          docker cp supabase/tests/database/p0_integrity_contracts.test.sql "$CONTAINER:/tmp/p0_integrity_contracts.test.sql"
+          docker cp supabase/tests/database/p0_authenticated_tenant_isolation.test.sql "$CONTAINER:/tmp/p0_authenticated_tenant_isolation.test.sql"
+          docker exec "$CONTAINER" pg_prove \
+            --dbname "postgresql://postgres:postgres@localhost:5432/fourtl4s_test" \
+            /tmp/p0_integrity_contracts.test.sql \
+            /tmp/p0_authenticated_tenant_isolation.test.sql
 
       - name: Parse and apply Organizational Unit proposal on disposable database
         run: |

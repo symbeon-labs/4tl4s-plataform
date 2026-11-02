@@ -77,6 +77,10 @@ The initial [SOA–4TL4S Context Exchange Contract](soa_4tl4s_context_exchange_c
 
 No connector should infer broad permission from a repository or account connection.
 
+## Integration contracts
+
+- The [4TL4S–ICIE Integration Contract v0.1](4tl4s_icie_integration_contract_v0.1.md) defines a proposed read-only, tenant-mapped integration boundary. It is not an implemented connector.
+
 ## Implementation sequence
 
 1. Domain model and authorization threat model.

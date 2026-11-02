@@ -1,19 +1,24 @@
 # 4TL4S Database Foundation
 
-## Status
+## Live status — verified 2026-11-02
 
-The initial schema and P0 tenant-integrity hardening migrations are applied to the dedicated Supabase project `4TL4S-PLATFORM` in `sa-east-1`. This is an implementation baseline, not a production security certification.
+The connected Supabase project is `4TL4S-PLATFORM` (`izllfdhxunudouhseoca`), region `sa-east-1`, PostgreSQL 17. The live project reports 12 public tables, all with RLS enabled, and zero rows in the inspected domain tables.
 
-## Migration history
+The live migration history was checked directly. It contains the four foundation migrations plus `20261102041633_harden_audit_event_insert_and_index_foreign_keys`. Do not infer live state from a branch or migration file alone; reconcile both before every deployment.
+
+This is an implementation baseline, not a production security certification.
+
+## Applied migration history
 
 | Version | Migration |
 |---|---|
-| `202611010001` | `initial_platform_schema` |
+| `20261101115251` | `initial_platform_schema` |
 | `20261101123353` | `p0_tenant_integrity_and_membership_authority` |
 | `20261101123510` | `consolidate_membership_management_policies` |
-| `20261101123533` | `remove_redundant_single_column_parent_foreign_keys` |\n| `20261101140000` | `harden_audit_event_ingestion` |
+| `20261101123533` | `remove_redundant_single_column_parent_foreign_keys` |
+| `20261102041633` | `harden_audit_event_insert_and_index_foreign_keys` |
 
-The initial schema migration creates the 12 domain tables. The P0 migrations add tenant-scoped composite foreign keys, relationship endpoint validation, membership authority boundaries, last-owner protection, immutable organization identity fields, and consolidated membership policies.
+The fifth migration removes the authenticated-client INSERT policy on `audit_events`, revokes direct INSERT from `anon` and `authenticated`, and adds indexes covering the 12 foreign-key columns identified by the Supabase Performance Advisor.
 
 ## Domain tables
 
@@ -26,78 +31,70 @@ The initial schema migration creates the 12 domain tables. The P0 migrations add
 | IP governance | `ip_assets`, `relationships` |
 | Integrations and audit | `integration_connections`, `audit_events` |
 
-## Access and integrity model
+## Verified controls
 
 - RLS is enabled on all 12 public tables.
-- Membership-backed helper functions enforce organization membership.
-- Organization creation assigns the creator the `owner` role.
-- Parent/child references across initiatives, work packages, artifacts, evidence, decisions, and IP assets are constrained to the same organization.
-- Relationship endpoints are checked for supported entity type, existence, and same-organization ownership.
-- Only owners can grant or manage privileged owner/admin memberships; admins are limited to non-privileged membership roles.
-- The final active owner cannot be demoted, suspended, or deleted.
-- Membership organization and user identity fields are immutable.
-- Organization `id` and `created_by` are immutable.
-- Integration connection metadata is restricted to organization owners and admins.
-- Authenticated clients have no direct INSERT, UPDATE or DELETE path into `audit_events`; trusted server/database ingestion is required. The ingestion pipeline is not yet implemented.
-- New Auth users receive a profile row through an Auth trigger.
+- Tenant-scoped composite foreign keys protect important parent/child references.
+- Membership authority and last-active-owner protections are installed. The live trigger locks the parent organization row before counting active owners, serializing competing owner-removal attempts at that organization.
+- Relationship endpoint validation is installed for the currently supported entity types.
+- Authenticated clients have neither a direct INSERT grant nor an INSERT/ALL RLS policy on `audit_events`. The live grants show INSERT only for `service_role` and `postgres`.
+- The live security advisor returned no findings on 2026-11-02.
 
-## Automated database tests
+**Important:** blocking direct client insertion does not implement trusted audit ingestion. There is currently no deployed Edge Function for this project. A server-side ingestion path, actor attribution, event schema validation, correlation IDs, idempotency, and coverage of material business mutations remain to be implemented. Until then, the audit table is deliberately not writable by ordinary authenticated clients.
 
-Schema-contract tests are located at:
+## Migration and test workflow
 
-- `tests/database/p0_integrity_contracts.test.sql`
-
-They use pgTAP to verify installed RLS coverage, tenant-scoped constraints, triggers, membership policy consolidation, and function privilege boundaries.
-
-Run locally with the Supabase CLI and a local database:
+Run in a local/disposable Supabase environment:
 
 ```bash
 supabase start
 supabase test db
 ```
 
-The test file is a catalog-level contract suite. It does **not** yet prove behavior under distinct authenticated JWT identities or concurrent owner-removal attempts. Those runtime tests must use isolated test identities and tenant fixtures in a disposable local/test database, never production.
+The existing pgTAP contract file must be inspected and executed against the exact PR head before claiming database tests pass. Catalog inspection alone does not prove runtime tenant isolation.
+
+Required runtime tests:
+1. Two synthetic users in separate organizations: prove cross-tenant SELECT returns no rows and cross-tenant INSERT/UPDATE/DELETE are rejected.
+2. Parent/child tenant mismatch: prove composite references reject cross-organization references.
+3. Membership authority: prove a member cannot grant roles, an admin cannot create/modify owner/admin authority, and only an owner can manage owner-level membership.
+4. Last-owner race: use two independent sessions attempting to deactivate/delete the final two active owners; assert at least one active owner remains and one competing transaction fails.
+5. Stale-session/revocation: verify the application's chosen session invalidation behavior; JWT claims alone are not assumed to refresh immediately.
+
+Do not run destructive authorization tests against the live project. Use synthetic identities and disposable databases.
 
 ## Remaining limitations before production
 
-1. Cross-tenant read/write tests with distinct authenticated identities have not yet been executed.
-2. Concurrent last-owner mutation behavior still requires a multi-session integration test.
-3. The relationship entity-type allowlist is intentionally explicit; adding new entity types requires a migration and corresponding tests.
-4. Audit events are append-only for authenticated clients through current grants and policies, but privileged service credentials can bypass RLS. Service-side controls and operational logging remain necessary.
-5. No automatic audit trigger has yet been attached to every mutable business table.
-6. Invitation flows, role-change approval, account recovery, MFA policy, and session hardening remain to be implemented.
-7. Secrets must not be stored in `integration_connections`; `secret_reference` is only a pointer to an external secret manager.
-8. Storage buckets and object-level policies are not yet configured.
+1. pgTAP and authenticated runtime tests have not yet been executed in this environment; do not report them as passed.
+2. Trusted audit ingestion is not implemented; no automatic audit trigger covers every mutable business table.
+3. Invitation flows, role-change approval, account recovery, MFA policy, and session hardening remain outstanding.
+4. No Edge Functions are currently deployed for this project. Storage bucket inventory returned no buckets; private object storage and object-level policies are not configured.
+5. Service-role credentials can bypass RLS; keep them server-side, scope their use, and add operational logging.
+6. `secret_reference` must remain a pointer to an external secret manager; secrets must not be stored in `integration_connections`.
+7. The Performance Advisor reports 31 unused-index notices. With the database currently empty, this is expected; review after representative workload rather than deleting indexes prematurely.
 
 ## Data protection stance
 
-No customer records, RS Advogados information, or third-party project payloads were seeded. The database remains intentionally empty. Client-specific data must only be introduced after organization isolation, access tests, and the relevant engagement scope have been reviewed.
+The live database currently contains no domain rows in the inspected tables. Do not seed customer or RS Advogados information until tenant isolation, authorization tests, and engagement scope have been reviewed.
+
+The Git repository and its history require a separate content-classification review before client documents are committed. Private repository visibility is not a substitute for data minimization, access scoping, retention, or secret scanning.
+
+## Organizational Unit access — not applied
+
+The Organizational Unit design package remains under `proposals/`:
+
+- `organizational_unit_scoped_access_v0.1.sql`
+- `organizational_unit_validation_matrix_v0.1.md`
+
+The live schema has no Organizational Unit tables or Unit Membership model. The proposed SQL has not been applied. ADR-0005 remains proposed in the reconciled implementation state. Do not move proposal SQL into active migrations until the domain and authorization contracts, migration/rollback plan, RLS changes, and authenticated runtime tests are approved.
 
 ## Next implementation sequence
 
-1. Execute the pgTAP contract suite in a local Supabase environment.
-2. Add authenticated multi-tenant integration tests and concurrency tests.
-3. Implement Supabase Auth flows and server-side authorization.
-4. Implement the Next.js application shell and organization onboarding.
-5. Add audited APIs and scoped GitHub integration.
-6. Configure Storage with private buckets and organization-scoped policies.
-7. Run lint, type checks, build, and security review before opening the MVP for operational use.
-
-
-## Organizational Unit access proposal (not applied)
-
-The design package is available under `proposals/`:
-
-- `organizational_unit_scoped_access_v0.1.sql` — proposed schema, helper functions, hierarchy and scope-consistency guards, scope-aware RLS policies, separate unit-administrator membership authority, and fail-closed relationship access.
-- `organizational_unit_validation_matrix_v0.1.md` — synthetic multi-tenant authorization and integrity test matrix.
-
-Selected policy proposal:
-- Unassigned organization-level initiatives remain available to active members of that organization, preserving the current baseline.
-- Unit-scoped initiatives and descendants require explicit active Unit Membership.
-- Organization owners/admins manage unit structure but do not automatically gain access to unit-scoped content.
-- Read-only unit roles can read; only unit_admin, unit_manager and contributor roles can write ordinary unit-scoped work.
-- Suspended organization membership or inactive unit lifecycle blocks unit-content access.
-
-**Relationship control:** the proposal now denies authenticated access to `relationships` until endpoint-aware authorization is implemented and runtime-tested. This is a deliberate fail-closed restriction; relationship graph functionality is unavailable under the proposal.
-
-This SQL is stored under `proposals/`, not `migrations/`. It has not been applied, parsed by a PostgreSQL server, or runtime-tested. Do not execute it in production. ADR-0005 and the domain/security contracts remain proposed pending review and approval.
+1. Run the repository's pgTAP suite locally and preserve output with commit SHA.
+2. Add and execute authenticated tenant-isolation tests with distinct JWT identities.
+3. Add and execute multi-session concurrency tests for last-owner protection.
+4. Approve an audit event contract and implement trusted server-side ingestion with actor identity, validation, correlation, idempotency, and failure handling.
+5. Implement Auth flows and server-side authorization.
+6. Implement the application shell and organization onboarding.
+7. Configure private Storage buckets and organization-scoped object policies.
+8. Review client files and Git history for classification and secret exposure before client materials enter this repository.
+9. Run lint, type checks, build, security review, and advisor checks before MVP access.

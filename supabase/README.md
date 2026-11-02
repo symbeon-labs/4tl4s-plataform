@@ -4,7 +4,7 @@
 
 The connected Supabase project is `4TL4S-PLATFORM` (`izllfdhxunudouhseoca`), region `sa-east-1`, PostgreSQL 17. The live project reports 12 public tables, all with RLS enabled, and zero rows in the inspected domain tables.
 
-The live migration history was checked directly. It contains the four foundation migrations plus `20261102041633_harden_audit_event_insert_and_index_foreign_keys`. Do not infer live state from a branch or migration file alone; reconcile both before every deployment.
+The live migration history was checked directly. It contains five applied migrations. In the integration branch, the active migration directory is aligned to those exact five versions; the initial migration SQL and all subsequent migration statements were compared against the live `supabase_migrations.schema_migrations.statements` records. The unapplied, superseded `20261101140000` file was archived outside the active migration directory. Do not infer live state from a branch or migration file alone; reconcile both before every deployment.
 
 This is an implementation baseline, not a production security certification.
 
@@ -18,7 +18,7 @@ This is an implementation baseline, not a production security certification.
 | `20261101123533` | `remove_redundant_single_column_parent_foreign_keys` |
 | `20261102041633` | `harden_audit_event_insert_and_index_foreign_keys` |
 
-The fifth migration removes the authenticated-client INSERT policy on `audit_events`, revokes direct INSERT from `anon` and `authenticated`, and adds indexes covering the 12 foreign-key columns identified by the Supabase Performance Advisor.
+The fifth migration removes the authenticated-client INSERT policy on `audit_events`, revokes direct INSERT from `anon` and `authenticated`, and adds indexes covering the 12 foreign-key columns identified by the Supabase Performance Advisor. The active repository migration files now use the same version identifiers as the live ledger.
 
 ## Domain tables
 
@@ -51,7 +51,7 @@ supabase start
 supabase test db
 ```
 
-The existing pgTAP contract file must be inspected and executed against the exact PR head before claiming database tests pass. Catalog inspection alone does not prove runtime tenant isolation.
+The catalog contract suite passed in GitHub Actions on PR #3 head `12f11ec5d46b3fcdb7592be3a6248b542da8e643` (run `41398097357`). The integration branch adds a second authenticated tenant-isolation suite; it must pass on the exact integration PR head before its assertions can be treated as verified. Catalog inspection alone does not prove runtime tenant isolation.
 
 Required runtime tests:
 1. Two synthetic users in separate organizations: prove cross-tenant SELECT returns no rows and cross-tenant INSERT/UPDATE/DELETE are rejected.
@@ -64,7 +64,7 @@ Do not run destructive authorization tests against the live project. Use synthet
 
 ## Remaining limitations before production
 
-1. pgTAP and authenticated runtime tests have not yet been executed in this environment; do not report them as passed.
+1. The original catalog pgTAP suite has a successful CI run on the PR #3 source commit. The new authenticated tenant-isolation suite is added on the integration branch but its exact-head CI result is pending; do not report it as passed until the run succeeds.
 2. Trusted audit ingestion is not implemented; no automatic audit trigger covers every mutable business table.
 3. Invitation flows, role-change approval, account recovery, MFA policy, and session hardening remain outstanding.
 4. No Edge Functions are currently deployed for this project. Storage bucket inventory returned no buckets; private object storage and object-level policies are not configured.

@@ -98,3 +98,32 @@ M01 is not declared fully closed until:
 - No live security tests executed.
 - No client repository or file history rewritten.
 - No production-readiness or security-certification claim made.
+
+
+## 8. Migration-ledger reconciliation — content verified
+
+The connected Supabase migration ledger was read directly. It contains exactly five applied versions:
+
+- `20261101115251` — `initial_platform_schema`
+- `20261101123353` — `p0_tenant_integrity_and_membership_authority`
+- `20261101123510` — `consolidate_membership_management_policies`
+- `20261101123533` — `remove_redundant_single_column_parent_foreign_keys`
+- `20261102041633` — `harden_audit_event_insert_and_index_foreign_keys`
+
+The migration table exposes the original SQL statements. The repository files were compared against the stored live statements:
+
+| Migration | Result |
+|---|---|
+| Initial schema | Exact SHA-256 match after aligning the filename version |
+| P0 tenant integrity | Exact SHA-256 match |
+| Membership policy consolidation | Exact content match after trimming leading/trailing whitespace |
+| Redundant FK cleanup | Exact SHA-256 match |
+| Audit-event hardening | Exact content match after trimming trailing whitespace |
+
+The initial schema file was renamed in the integration branch from the incorrect repository version `202611010001` to the exact live version `20261101115251`. Its SQL content hash matched the live migration statement exactly: `e036871629506d179d138faaf2aea7cd4c1c8f8ef2985452e9ddf14768ec9e1f`.
+
+The repository also contained `20261101140000_harden_audit_event_ingestion.sql`, which is absent from the live ledger. Its behavior is superseded by the applied `20261102041633` migration. The unapplied file was moved out of the active migration directory into `supabase/archive/` with an explicit do-not-execute header. It was not applied to the live project.
+
+**Result:** the active migration directory now corresponds to the five versions recorded in the connected live migration ledger. This was a repository-only reconciliation; no live schema or migration history was changed.
+
+The fresh CI run must still confirm that the renamed canonical migration sequence replays successfully from an empty disposable database.

@@ -1,0 +1,70 @@
+name: Database pgTAP
+
+on:
+  pull_request:
+    paths:
+      - "supabase/**"
+      - ".github/workflows/pgtap.yml"
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - "supabase/**"
+      - ".github/workflows/pgtap.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pgtap-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pgtap:
+    name: Supabase migrations + pgTAP
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Validate pgTAP suite exists
+        shell: bash
+        run: |
+          test -s supabase/tests/database/p0_integrity_contracts.test.sql
+          test -d supabase/migrations
+          if ! compgen -G "supabase/migrations/*.sql" > /dev/null; then
+            echo "::error::No SQL migrations found under supabase/migrations/"
+            exit 1
+          fi
+
+      - name: Initialize local Supabase config when absent
+        shell: bash
+        run: |
+          if [ ! -f supabase/config.toml ]; then
+            supabase init
+          fi
+
+      - name: Start isolated local Supabase stack
+        run: supabase start
+
+      - name: Apply migrations to disposable local database
+        run: supabase db reset --local
+
+      - name: Enable pgTAP in local database
+        run: supabase db query --local "create extension if not exists pgtap with schema extensions;"
+
+      - name: Run original pgTAP contract suite
+        run: supabase test db supabase/tests/database/p0_integrity_contracts.test.sql
+
+      - name: Stop local Supabase stack
+        if: always()
+        run: supabase stop --no-backup

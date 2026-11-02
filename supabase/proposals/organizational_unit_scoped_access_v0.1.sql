@@ -419,11 +419,13 @@ AS $function$
   END;
 $function$;
 
-REVOKE ALL ON FUNCTION private.is_active_unit_admin(uuid,uuid) FROM PUBLIC, anon;\nREVOKE ALL ON FUNCTION private.has_active_unit_membership(uuid,uuid) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION private.is_active_unit_admin(uuid,uuid) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION private.has_active_unit_membership(uuid,uuid) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION private.has_unit_write_role(uuid,uuid) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION private.can_access_initiative(uuid,uuid,boolean) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION private.can_access_artifact(uuid,uuid,boolean) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION private.is_active_unit_admin(uuid,uuid) TO authenticated;\nGRANT EXECUTE ON FUNCTION private.has_active_unit_membership(uuid,uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION private.is_active_unit_admin(uuid,uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION private.has_active_unit_membership(uuid,uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION private.has_unit_write_role(uuid,uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION private.can_access_initiative(uuid,uuid,boolean) TO authenticated;
 GRANT EXECUTE ON FUNCTION private.can_access_artifact(uuid,uuid,boolean) TO authenticated;

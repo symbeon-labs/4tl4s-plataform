@@ -13,18 +13,20 @@ The suite is transaction-scoped and rolls back all fixtures. It does not access 
 
 ## 2. Assertions included
 
-The initial suite contains ten pgTAP assertions:
+The initial suite contains twelve pgTAP assertions:
 
 1. Tenant A owner sees only Tenant A's initiative.
 2. Tenant A cannot read Tenant B's initiative by direct identifier.
 3. Tenant A cannot insert an initiative into Tenant B.
-4. Tenant A cannot update Tenant B's initiative.
-5. Tenant A cannot delete Tenant B's initiative.
-6. Composite tenant-scoped foreign key rejects a child in Tenant A referencing a parent in Tenant B.
-7. Tenant A owner can write within Tenant A.
-8. Authenticated clients cannot directly insert audit events.
-9. Switching JWT subject to Tenant B exposes only Tenant B's initiative.
-10. Tenant A admin cannot grant owner authority.
+4. Tenant A's UPDATE against Tenant B is filtered without an error.
+5. Tenant A's DELETE against Tenant B is filtered without an error.
+6. The Tenant B initiative remains unchanged after Tenant A's UPDATE attempt.
+7. The Tenant B initiative remains present after Tenant A's DELETE attempt.
+8. Composite tenant-scoped foreign key rejects a child in Tenant A referencing a parent in Tenant B.
+9. Tenant A owner can write within Tenant A.
+10. Authenticated clients cannot directly insert audit events.
+11. Switching JWT subject to Tenant B exposes only Tenant B's initiative.
+12. Tenant A admin cannot grant owner authority.
 
 The test uses SET LOCAL ROLE authenticated and changes request.jwt.claim.sub between synthetic users to exercise RLS under separate identities.
 
@@ -75,3 +77,8 @@ The next run must verify this correction and the M02 assertions on the current i
 
 
 The JWT subject changes use `SET LOCAL request.jwt.claim.sub` rather than SELECT-returning `set_config` calls, so setup statements do not emit non-TAP rows into the pgTAP output stream.
+
+
+## 8. SQL assertion correction
+
+The first M02 execution reached the test file but failed because PostgreSQL does not allow a data-modifying CTE nested inside the scalar expression passed to pgTAP's `is()`. The UPDATE and DELETE checks were rewritten as `lives_ok()` statements under the authenticated role, followed by post-reset assertions that prove the other tenant's row was unchanged and still exists. The plan is now twelve assertions.

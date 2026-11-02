@@ -120,3 +120,17 @@ A read-only SQL execution was run against the connected live project to evaluate
 **Important test boundary:** this was an equivalent read-only catalog query, not execution of the pgTAP file. The live project does not have the `pgtap` extension installed. The container environment also could not clone the GitHub repository (DNS/network unavailable), and no local Supabase CLI/test stack was available. Therefore `supabase test db` remains unexecuted.
 
 No data writes or destructive operations were performed. Authenticated multi-tenant behavior and concurrent last-owner behavior remain untested.
+
+
+## 2026-11-02 — CI execution evidence addendum
+
+A subsequent inspection of GitHub Actions found a successful **Database pgTAP** workflow run associated with PR #3 head commit `12f11ec5d46b3fcdb7592be3a6248b542da8e643`.
+
+- Workflow run: `41398097357`
+- Job: `Supabase migrations + pgTAP`
+- Result: `completed / success`
+- Successful steps included starting an isolated local Supabase stack, applying repository migrations to the disposable database, enabling pgTAP, running the original `p0_integrity_contracts.test.sql` suite, and stopping the stack.
+
+This supersedes the earlier statement that no pgTAP execution had been evidenced for that PR head. The evidence is specifically tied to the PR #3 commit above; it does **not** establish authenticated multi-tenant behavior with distinct JWT identities, the two-session last-owner race, trusted audit ingestion, Auth lifecycle hardening, Storage policies, or production readiness.
+
+The new canonical integration branch contains documentation-only benchmark imports on top of that tested database baseline. A fresh workflow run against the integration PR head is still required before M01 can be considered fully verified.

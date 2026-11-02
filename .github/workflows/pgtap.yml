@@ -62,8 +62,8 @@ jobs:
       - name: Enable pgTAP in local database
         run: supabase db query --local "create extension if not exists pgtap with schema extensions;"
 
-      - name: Run original pgTAP contract suite
-        run: supabase test db supabase/tests/database/p0_integrity_contracts.test.sql
+      - name: Run all database pgTAP suites
+        run: supabase test db
 
       - name: Stop local Supabase stack
         if: always()

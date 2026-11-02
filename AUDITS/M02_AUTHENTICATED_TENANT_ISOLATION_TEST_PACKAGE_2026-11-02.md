@@ -3,7 +3,7 @@
 **Record ID:** 4TL4S-M02-TEST-2026-11-02-01  
 **Date:** 2026-11-02  
 **Branch:** integration/foundation-reconciled  
-**Status:** Test package added; execution on current integration head pending.
+**Status:** 12 authenticated tenant-isolation assertions passed in Database Validation on integration head `059342676c6a4d4ea03d0fd400aa0301f10948e9`; the separate Supabase CLI workflow is still running.
 
 ## 1. Scope
 
@@ -82,3 +82,32 @@ The JWT subject changes use `SET LOCAL request.jwt.claim.sub` rather than SELECT
 ## 8. SQL assertion correction
 
 The first M02 execution reached the test file but failed because PostgreSQL does not allow a data-modifying CTE nested inside the scalar expression passed to pgTAP's `is()`. The UPDATE and DELETE checks were rewritten as `lives_ok()` statements under the authenticated role, followed by post-reset assertions that prove the other tenant's row was unchanged and still exists. The plan is now twelve assertions.
+
+
+## 9. Verified execution — integration head 0593426
+
+**GitHub Actions workflow:** Database Validation  
+**Run ID:** `41545893344`  
+**Job ID:** `125621300128`  
+**Commit:** `059342676c6a4d4ea03d0fd400aa0301f10948e9`  
+**Job conclusion:** `success`
+
+The workflow replayed all five active migrations against a disposable PostgreSQL 17 database, then executed both pgTAP files:
+
+- `p0_integrity_contracts.test.sql` — PASS
+- `p0_authenticated_tenant_isolation.test.sql` — PASS
+- Combined result: **Files=2, Tests=26, Result=PASS**
+
+The 12 assertions in this M02 suite executed successfully. The workflow also parsed/applied the Organizational Unit proposal in the disposable database and completed its fail-closed object/policy checks. This did not activate OU in the live Supabase project.
+
+### Defects corrected before the passing run
+
+1. Fixed the UPDATE and DELETE pgTAP SQL dollar-quote delimiters.
+2. Replaced a data-modifying CTE nested in `is()` with a direct `lives_ok()` INSERT assertion; PostgreSQL rejects the former placement.
+3. Fixed two literal escaped newline sequences (`\\n`) in the OU proposal that caused psql to interpret `\\nREVOKE` as an invalid meta-command.
+
+### Remaining verification boundary
+
+The passing Database Validation run is tied to the exact commit above and uses a disposable PostgreSQL 17 service database. The separate `Database pgTAP` workflow, which starts a full local Supabase stack, is still in progress for the same commit and must be observed to completion.
+
+M02 is not fully closed: the two-session concurrent last-owner test, stale JWT/session revocation, and Auth/API lifecycle tests remain outstanding. No live Supabase writes or destructive live tests were performed.

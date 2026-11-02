@@ -90,20 +90,15 @@ SELECT throws_ok(
   'Composite tenant foreign key rejects a parent from another tenant'
 );
 
-SELECT is(
-  (WITH inserted AS (
-     INSERT INTO public.initiatives
-       (organization_id, name, domain, status, created_by)
-     VALUES
-       ('a0000000-0000-4000-8000-000000000001',
-        'Authorized tenant A write',
-        'product_development',
-        'active',
-        '10000000-0000-4000-8000-000000000001')
-     RETURNING 1
-   )
-   SELECT count(*)::integer FROM inserted),
-  1,
+SELECT lives_ok(
+  $INSERT INTO public.initiatives
+      (organization_id, name, domain, status, created_by)
+    VALUES
+      ('a0000000-0000-4000-8000-000000000001',
+       'Authorized tenant A write',
+       'product_development',
+       'active',
+       '10000000-0000-4000-8000-000000000001')$,
   'Tenant A owner can write within tenant A'
 );
 

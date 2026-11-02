@@ -54,15 +54,26 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install PostgreSQL client and pgTAP
+        shell: bash
         run: |
+          set -euo pipefail
           sudo apt-get update
-          sudo apt-get install -y postgresql-client-17
+          sudo apt-get install -y postgresql-client
           docker ps --format '{{.ID}} {{.Image}}' | awk '$2 ~ /^postgres:17/ {print $1; exit}' > /tmp/postgres-container
           CONTAINER="$(cat /tmp/postgres-container)"
           test -n "$CONTAINER"
-          docker exec "$CONTAINER" bash -lc '
-            apt-get update &&
+          docker exec "$CONTAINER" bash -euc '
+            apt-get update
+            apt-get install -y ca-certificates curl
+            install -d /usr/share/postgresql-common/pgdg
+            curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+              -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc
+            . /etc/os-release
+            echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" > /etc/apt/sources.list.d/pgdg.list
+            apt-get update
             apt-get install -y postgresql-17-pgtap
+            command -v pg_prove
+            psql --version
           '
 
       - name: Bootstrap minimal Supabase Auth compatibility layer
@@ -110,7 +121,8 @@ jobs:
       - name: Run P0 pgTAP contract tests
         run: |
           pg_prove --dbname "postgresql://postgres:postgres@localhost:5432/fourtl4s_test" \
-            supabase/tests/database/p0_integrity_contracts.test.sql
+            supabase/tests/database/p0_integrity_contracts.test.sql \
+            supabase/tests/database/p0_authenticated_tenant_isolation.test.sql
 
       - name: Parse and apply Organizational Unit proposal on disposable database
         run: |

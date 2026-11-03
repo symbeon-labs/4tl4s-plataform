@@ -3,7 +3,6 @@
 Architecture Decision Records (ADRs) preserve consequential decisions and their rationale. They prevent assumptions from silently becoming architecture.
 
 ## When to create an ADR
-
 Create an ADR when a decision materially affects:
 - domain boundaries or lifecycle rules;
 - ownership, IP, or data isolation;
@@ -11,10 +10,10 @@ Create an ADR when a decision materially affects:
 - core technology choices or persistence;
 - integration contracts;
 - evidence, audit, or approval semantics;
-- deployment, security, or operational risk.
+- deployment, security, or operational risk;
+- product operating model or human-agent delegation.
 
 ## Required structure
-
 - ID and title;
 - status: proposed, accepted, superseded, or rejected;
 - date and decision owner;
@@ -26,7 +25,6 @@ Create an ADR when a decision materially affects:
 - references and review date where applicable.
 
 ## Rules
-
 - Keep accepted decisions immutable in meaning; supersede with a new ADR rather than rewriting history.
 - Link implementation changes to relevant ADRs.
 - Distinguish a proposal from an accepted decision.
@@ -34,7 +32,13 @@ Create an ADR when a decision materially affects:
 - An ADR documents a decision; it does not prove implementation.
 
 ## Index
-
 - [ADR-0001 — Separate operating domains under shared governance](ADR-0001-operating-domains.md)
 - [ADR-0002 — Preserve project autonomy and IP boundaries](ADR-0002-project-autonomy-and-ip-boundaries.md)
 - [ADR-0003 — Govern research-to-development transfer](ADR-0003-research-to-development-transfer.md)
+- [ADR-0004 — Represent organizational units separately and consume SOA context by reference](ADR-0004-organizational-units-and-soa-context.md)
+- [ADR-0005 — Introduce first-class organizational units with explicit scoped access](ADR-0005-organizational-unit-scoped-access.md)
+- [ADR-0006 — Managed Engineering and Human-Agent Delegation](ADR-0006-managed-engineering-and-human-agent-delegation.md)
+
+ADR-0005 is **Proposed** and depends on review of the domain and authorization contracts. No schema or runtime implementation is implied.
+
+ADR-0006 is **Accepted** as the product operating-model decision. Its later execution stages remain roadmap targets and are not claims of current implementation.

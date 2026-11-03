@@ -49,7 +49,7 @@ Classification is a recorded governance decision supported by provenance and agr
 
 ## Initial implementation stance
 
-This repository is the foundation for 4TL4S. The initial work establishes product charter, domain boundaries, governance rules, and architectural decisions before implementation. No production readiness, security certification, or operational capability is implied by these documents.
+This repository is the foundation for 4TL4S. The initial product charter, domain boundaries, governance rules, and architectural decisions are established. A dedicated Supabase project and the first multi-tenant database schema have now been provisioned on the implementation branch. Authentication flows, application interface, APIs, integrations, and security validation remain in progress. No production readiness or security certification is implied.
 
 ## Documentation map
 
@@ -64,8 +64,8 @@ This repository is the foundation for 4TL4S. The initial work establishes produc
 
 ## Status
 
-**Stage:** Foundational definition  
-**Implementation status:** Not yet established by this documentation  
+**Stage:** Foundation + database baseline  
+**Implementation status:** Initial Supabase schema applied; application layer and security validation pending  
 **Repository:** `symbeon-labs/4tl4s-plataform`
 
 This charter is a controlled starting point. Changes to domain boundaries, ownership rules, or authorization principles should be recorded as explicit decisions.

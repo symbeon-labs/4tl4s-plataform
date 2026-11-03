@@ -32,8 +32,9 @@ Organizations, contacts, opportunities, proposals, contracts, amendments, obliga
 ## Core records (conceptual)
 
 - **Organization** — legal or operational entity.
+- **OrganizationalUnit** — internal or operational unit within an Organization; not automatically a tenant or legal entity.
 - **Person / Membership** — identity and relationship to an organization.
-- **Initiative** — common identity, primary classification, owner, status, and scope.
+- **Initiative** — common identity, primary classification, owner, status, and scope; may have an explicit unit association.
 - **WorkPackage** — bounded work within an initiative.
 - **Artifact** — a versioned output with provenance and lifecycle.
 - **EvidenceRecord** — a pointer or controlled record of supporting material.
@@ -47,6 +48,8 @@ These are conceptual entities, not a finalized database schema.
 ## Tenant and access boundaries
 
 The design must support organization-level and client-level isolation. A user may see a record only when both identity authorization and record-level scope permit it. Cross-client aggregation must be explicitly authorized and must avoid leaking identifying or confidential data.
+
+Organizational-unit scope is narrower than tenant scope. Organization membership alone must not be treated as access to every unit-scoped record. See the [Organizational Unit Domain Contract](../DOMAIN_CONTRACTS/organizational_unit_domain_contract_v0.1.md) and [Organizational Unit Authorization Contract](../GOVERNANCE/organizational_unit_authorization_contract_v0.1.md). These are proposed contracts, not implemented controls.
 
 Access control must be enforced server-side. Hiding a UI element is not authorization. Integrations and agents must use scoped identities and least privilege.
 
@@ -70,7 +73,13 @@ Every connector must declare:
 - provenance and timestamps;
 - failure handling and revocation procedure.
 
+The initial [SOA–4TL4S Context Exchange Contract](soa_4tl4s_context_exchange_contract_v0.1.md) defines a proposed read-only exchange. It is not an implemented connector.
+
 No connector should infer broad permission from a repository or account connection.
+
+## Integration contracts
+
+- The [4TL4S–ICIE Integration Contract v0.1](4tl4s_icie_integration_contract_v0.1.md) defines a proposed read-only, tenant-mapped integration boundary. It is not an implemented connector.
 
 ## Implementation sequence
 

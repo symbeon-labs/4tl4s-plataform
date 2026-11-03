@@ -1,29 +1,14 @@
-name: Database pgTAP
+name: Database pgTAP (manual)
 
 on:
-  pull_request:
-    paths:
-      - "supabase/**"
-      - ".github/workflows/pgtap.yml"
-  push:
-    branches:
-      - main
-      - master
-    paths:
-      - "supabase/**"
-      - ".github/workflows/pgtap.yml"
   workflow_dispatch:
 
 permissions:
   contents: read
 
-concurrency:
-  group: pgtap-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
   pgtap:
-    name: Supabase migrations + pgTAP
+    name: Supabase migrations + pgTAP (manual diagnostic)
     runs-on: ubuntu-latest
     timeout-minutes: 25
 

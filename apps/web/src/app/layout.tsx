@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "4TL4S — Operational Intelligence",
-  description: "A governed operating layer for projects, evidence and execution.",
+  title: "4TL4S PLATFORM",
+  description: "Coordenação, governança e execução de iniciativas.",
+  icons: { icon: "/atlas-mark.svg" },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

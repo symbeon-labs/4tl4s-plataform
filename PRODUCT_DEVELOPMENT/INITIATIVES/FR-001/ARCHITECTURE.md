@@ -141,3 +141,20 @@ Begin read-first. Retrieve only the financial records required for matching, usi
 ## Deployment options
 
 The product should support a separately governed Symbeon-hosted environment or client-controlled deployment, subject to the commercial agreement and security review. No deployment topology is assumed before data residency, access and operational constraints are known.
+
+## Mundo do Sabor pilot — confirmed source priorities
+
+Discovery confirmed use of Omie, banks across institutions, acquirers, POS/checkout, Excel/Google Sheets and boletos/receivables. No additional “Other” source was specified. Consolidate the duplicate bank entry into one family.
+
+| Priority | Adapter | Initial delivery boundary | Key relationships to validate |
+|---|---|---|---|
+| P0 | Banking statements | OFX + institution-mapped CSV; extensible institution registry | Bank movement ↔ Omie title/settlement; bank fees and transfers |
+| P0 | Omie read-only | Relevant payable/receivable titles, settlements and stable identifiers | ERP title/settlement ↔ bank movement; partial settlement |
+| P1 | Acquirers | Actual provider reports/API only after provider confirmation and samples | Card sales/installments ↔ payout; gross-to-net, MDR, anticipation, refunds/chargebacks |
+| P1 | POS / checkout | Sales, payment method, cancellation and cash closure exports/API | POS sales ↔ acquirer transactions/receivables ↔ bank payout |
+| P1 | Boleto / receivables | Actual bank/provider layouts; evaluate CNAB, API, CSV | Receivable/title ↔ collection/partial payment ↔ bank credit |
+| P2 | Excel / Google Sheets | XLSX/CSV upload with mapping and row lineage; Sheets API deferred pending authorization model | Supporting operational registers ↔ canonical records |
+
+**P0** means the first end-to-end reconciliation slice. **P1** means the next operational flow after P0 evidence is stable. **P2** means a controlled supporting import path; it may be pulled forward if discovery shows that spreadsheets are the only reliable source for a required field.
+
+“Banks across institutions” is an extensibility requirement, not a promise of native API integration with every institution. Implement file-based interoperability first and add institution-specific APIs only when access, documentation, consent and homologation are confirmed. Similarly, Google Sheets is not treated as interchangeable with an uploaded XLSX: API synchronization requires explicit account authorization, scope, ownership and refresh semantics.

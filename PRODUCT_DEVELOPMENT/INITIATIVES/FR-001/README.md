@@ -9,7 +9,7 @@
 
 ## Purpose
 
-Create a controlled financial reconciliation product that ingests bank statement data, normalizes transactions, identifies candidate matches against financial records, surfaces divergences, and preserves an auditable decision history.
+Create a controlled, multi-source financial reconciliation product that ingests bank movements and financial records from different operational systems, normalizes them into governed canonical representations, identifies explainable relationships, surfaces divergences, and preserves an auditable decision history.
 
 The first release is a bounded pilot. It is not an ERP replacement, payment processor, accounting authority, or autonomous settlement system.
 
@@ -19,42 +19,70 @@ The first release is a bounded pilot. It is not an ERP replacement, payment proc
 
 The product must integrate with 4TL4S only through explicit, versioned contracts. It must not depend on 4TL4S to execute core reconciliation.
 
-## Initial scope
+## Source taxonomy
 
-- Register an organization-scoped bank account and statement source.
-- Ingest OFX as the primary candidate format; support CSV only after its mapping is explicitly defined.
-- Preserve source-file provenance and calculate a content hash.
-- Parse and normalize transactions into a canonical model.
-- Validate required fields, dates, amounts, signs, account identity, and duplicate candidates.
-- Match bank transactions to imported financial records using deterministic criteria.
-- Produce candidate matches, unmatched items, conflicts, and review cases.
-- Require authorized human confirmation for consequential reconciliation decisions.
-- Record who decided what, when, on which evidence and rule version.
-- Export a reconciliation report and a controlled OFX output only if the Omie homologation test establishes that output is required and accepted.
+A **source family** identifies where a financial record originates. An **ingestion channel** identifies how it is obtained. A **file/API format** identifies its technical representation. These dimensions must not be conflated.
+
+### Source families
+
+- **Banking:** current accounts, savings accounts, bank statements, bank fees, transfers, PIX and other bank movements.
+- **ERP / financial management:** payable and receivable titles, settlements, cash/bank registers, chart-of-accounts references and financial exports (including Omie).
+- **Card acquirers and sub-acquirers:** sales, installments, gross/net amounts, MDR/fees, anticipated receivables, cancellations and chargebacks (e.g. Cielo, Rede, Stone, Getnet, subject to client usage).
+- **Payment gateways and PIX providers:** collections, payment intents, PIX receipts, refunds, fees and settlement reports.
+- **POS / checkout / sales systems:** orders, sales, cancellations, discounts, cash register closures and payment-method breakdowns.
+- **Cash operations:** opening/closing balances, cash withdrawals, deposits, petty cash and recorded cash movements.
+- **Billing and receivables:** invoices, boletos, collections, partial payments, overdue titles and settlement references.
+- **Marketplaces and delivery platforms:** orders, commissions, withheld fees, refunds and payout/settlement statements.
+- **Payroll, tax and statutory obligations:** payment schedules and confirmations as supporting sources; defer specialized tax/accounting treatment until separately specified.
+
+A source family does not imply that every record is a bank movement. The canonical model must distinguish source record types and their roles in a reconciliation relationship.
+
+### Ingestion channels
+
+- Manual upload by an authorized user.
+- API connector with explicitly scoped credentials.
+- Webhook/event reception with signature and replay validation.
+- Controlled batch import from an approved storage location.
+- Manual structured entry for documented exceptions, always marked as manually supplied.
+
+### Candidate formats and protocols
+
+- Structured financial files: OFX, CSV, XLSX.
+- Banking/remittance files: CNAB 240 and CNAB 400, where applicable and layout-validated.
+- Documents: digital PDF and scanned PDF/image through text extraction or optional OCR.
+- Structured business documents: XML only for a defined use case and schema (for example, a relevant fiscal or payment document).
+- Integrations: REST APIs, webhooks and provider-specific exports.
+
+Support is adapter-specific, not universal. Every format requires a versioned mapping, sample fixtures and validation tests. A file extension alone is not proof of compatibility.
+
+## Initial v0.1 implementation boundary
+
+The v0.1 domain model and adapter contracts must be multi-source from the beginning. The first operational pilot should prioritize sources confirmed in discovery, with OFX and mapped CSV as initial bank-statement adapters and a read-only Omie adapter for financial records. Other families are represented in the contract and source registry but are not claimed as implemented until their adapters pass acceptance tests.
 
 ## Explicit exclusions for v0.1
 
-- Automatic payments, transfers, or write-offs.
-- Automatic posting or settlement in Omie.
+- Automatic payments, transfers, write-offs or settlement.
+- Automatic posting or mutation in Omie or any external source.
 - Unreviewed AI decisions.
 - Cross-company data pooling.
-- Production deployment before security, operational, and client acceptance gates.
-- OCR as a mandatory ingestion path. OCR is an optional adapter for scanned PDFs/images and is deferred until representative samples justify it.
-- Semantic/vector search as a prerequisite. Initial search should use structured fields and indexed text.
+- Production deployment before security, operational and client acceptance gates.
+- OCR as a mandatory ingestion path.
+- Assuming every listed source, institution or format is already supported.
+- Semantic/vector search as a prerequisite; structured fields and indexed text come first.
 
 ## Release gates
 
-1. Representative, authorized sample statements are available.
-2. Bank layout and account metadata are documented.
-3. Omie import/export behavior is verified in a non-production environment.
+1. Authorized representative samples exist for each source adapter included in the pilot.
+2. Source identity, account/entity scope, format/layout and mapping are documented.
+3. Omie capabilities are verified in a non-production environment.
 4. Matching rules and exception policy are approved by the financial process owner.
-5. Test cases cover normal, duplicate, ambiguous, missing, and conflicting transactions.
-6. Data access, retention, backup, and deletion rules are approved.
+5. Tests cover normal, duplicate, ambiguous, missing, partial, split, reversed and conflicting records where relevant.
+6. Data access, retention, backup and deletion rules are approved.
 7. Release evidence and human acceptance are recorded.
 
 ## Source-of-truth principle
 
-The bank statement remains source evidence for bank movements. Omie remains the operational system of record for its own financial titles and accounting records. FR-001 proposes relationships between records; it does not silently overwrite either source.
+Each originating system remains authoritative for the records it owns. A bank statement is evidence of bank movements; an ERP is authoritative for its own titles and operational records; an acquirer or gateway is authoritative for its own sales, fees and payout reports. FR-001 preserves source assertions and proposes traceable relationships; it does not silently overwrite any source.
 
 ## Related documents
 
@@ -66,4 +94,4 @@ The bank statement remains source evidence for bank movements. Omie remains the 
 
 ## Current limitations
 
-This is a proposed product baseline, not proof of implementation, compatibility with any bank or Omie environment, accounting correctness, security certification, or production readiness.
+This is a proposed product baseline, not proof of implementation, compatibility with any bank/provider/ERP, accounting correctness, security certification, or production readiness.

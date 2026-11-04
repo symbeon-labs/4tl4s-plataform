@@ -95,3 +95,20 @@ Each originating system remains authoritative for the records it owns. A bank st
 ## Current limitations
 
 This is a proposed product baseline, not proof of implementation, compatibility with any bank/provider/ERP, accounting correctness, security certification, or production readiness.
+
+## Pilot source confirmation and adapter priority
+
+The pilot discovery response identifies these source families as used by Mundo do Sabor: **Omie, banks (any institution), acquirers, POS/checkout, Excel/Google Sheets spreadsheets, and boletos/receivables**. “Other” was left unspecified; no additional source is assumed.
+
+The initial adapter sequence is:
+
+1. **Bank statements — cross-institution file adapter:** OFX first where available, then institution-mapped CSV. “Any institution” means the source registry and mapping layer must be institution-extensible; it does not mean universal API connectivity or guaranteed support for every bank.
+2. **Omie — read-only financial adapter:** payable/receivable titles, settlements and relevant identifiers, subject to API/export validation and homologation.
+3. **Acquirers — settlement adapter:** sales, installments, gross/net, MDR/fees, anticipation, cancellations and chargebacks, based on the actual provider(s) and sample reports.
+4. **POS / checkout — sales and closure adapter:** sales, payment-method breakdowns, cancellations, discounts and cash closures.
+5. **Boletos / receivables — collection adapter:** titles, references, partial payments and settlement events; evaluate CNAB/API/CSV according to the actual issuer/bank/provider workflow.
+6. **Excel / Google Sheets — controlled tabular adapter:** XLSX/CSV upload first with versioned column mapping; Google Sheets API integration only after access, ownership and update semantics are agreed.
+
+This is a delivery priority, not a claim that adapters are already implemented. Initial technical validation should run a thin vertical slice across bank + Omie first, then add acquirer/POS/receivables relationships. Spreadsheets are a supporting ingestion path and must preserve workbook/sheet/row provenance.
+
+Duplicate mention of “Bancos” in the discovery response is consolidated into one source family. The “Other” field is blank and remains an open discovery item.
